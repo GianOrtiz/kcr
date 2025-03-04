@@ -2,7 +2,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -62,7 +61,6 @@ var _ = Describe("Deployment Controller", func() {
 							},
 						},
 					}
-					fmt.Println("ESTOU AQUI")
 					Expect(k8sClient.Create(ctx, deployment)).To(Succeed())
 					Eventually(func(g Gomega) {
 						isMonitoringDeployment := false

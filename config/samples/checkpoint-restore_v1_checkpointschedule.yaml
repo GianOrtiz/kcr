@@ -1,0 +1,12 @@
+apiVersion: checkpoint-restore.kcr.io/v1
+kind: CheckpointSchedule
+metadata:
+  labels:
+    app.kubernetes.io/name: kcr
+    app.kubernetes.io/managed-by: kustomize
+  name: checkpointschedule-sample
+spec:
+  schedule: "* * * * *"
+  selector:
+    matchLabels:
+      name: pod-name

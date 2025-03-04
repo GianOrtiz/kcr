@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- checkpoint-restore_v1_checkpointschedule.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
