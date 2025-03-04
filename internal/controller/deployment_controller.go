@@ -18,18 +18,24 @@ package controller
 
 import (
 	"context"
+	"errors"
+	"regexp"
 
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+const CHECKPOINT_RESTORE_SCHEDULE_ANNOTATION = "kcr.io/checkpoint-restore-schedule"
+
 // DeploymentReconciler reconciles a Deployment object
 type DeploymentReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme                       *runtime.Scheme
+	MonitoredDeploymentSelectors []v1.LabelSelector
 }
 
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
@@ -46,9 +52,34 @@ type DeploymentReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.20.2/pkg/reconcile
 func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	log := log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	var deployment appsv1.Deployment
+	if err := r.Get(ctx, req.NamespacedName, &deployment); err != nil {
+		log.Error(err, "unable to get Deployment")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	checkpointRestoreScheduleAnnotation, ok := deployment.Annotations[CHECKPOINT_RESTORE_SCHEDULE_ANNOTATION]
+	if !ok {
+		log.Info("not monitoring deployment as it is not annotated")
+		return ctrl.Result{}, nil
+	}
+
+	cronRegex := "(@(annually|yearly|monthly|weekly|daily|hourly|reboot))|(@every (\\d+(ns|us|µs|ms|s|m|h))+)|((((\\d+,)+\\d+|(\\d+(\\/|-)\\d+)|\\d+|\\*) ?){5,7})"
+	matched, err := regexp.MatchString(cronRegex, checkpointRestoreScheduleAnnotation)
+	if err != nil {
+		log.Error(err, "unable to parse checkpoint schedule")
+		return ctrl.Result{}, err
+	}
+
+	if !matched {
+		err = errors.New("checkpoint restore schedule annotation does not match a proper cron schedule")
+		log.Error(err, "unable to parse the schedule")
+		return ctrl.Result{}, err
+	}
+
+	r.MonitoredDeploymentSelectors = append(r.MonitoredDeploymentSelectors, *deployment.Spec.Selector)
 
 	return ctrl.Result{}, nil
 }
