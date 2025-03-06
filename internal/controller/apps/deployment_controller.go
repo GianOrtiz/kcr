@@ -79,7 +79,20 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 
-	checkpointSchedule := checkpointrestorev1.CheckpointSchedule{
+	var checkpointSchedule checkpointrestorev1.CheckpointSchedule
+	err = r.Get(ctx, client.ObjectKey{Namespace: deployment.Namespace, Name: deployment.Name}, &checkpointSchedule)
+	if err == nil {
+		// Update the CheckpointSchedule
+		checkpointSchedule.Spec.Schedule = checkpointRestoreScheduleAnnotation
+		checkpointSchedule.Spec.Selector = *deployment.Spec.Selector
+		if err := r.Update(ctx, &checkpointSchedule); err != nil {
+			log.Error(err, "failed to update CheckpointSchedule")
+			return ctrl.Result{Requeue: true}, err
+		}
+	}
+
+	// Create the CheckpointSchedule as it does not exist yet.
+	checkpointSchedule = checkpointrestorev1.CheckpointSchedule{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      deployment.Name,
 			Namespace: deployment.Namespace,
@@ -91,7 +104,7 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		Status: checkpointrestorev1.CheckpointScheduleStatus{Running: false},
 	}
 	if err := r.Create(ctx, &checkpointSchedule); err != nil {
-		log.Error(err, "failed to create checkpoint schedule")
+		log.Error(err, "failed to create CheckpointSchedule")
 		return ctrl.Result{Requeue: true}, err
 	}
 

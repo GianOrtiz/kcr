@@ -71,6 +71,16 @@ var _ = Describe("Deployment Controller", func() {
 						g.Expect(checkpointSchedule.Spec.Schedule).To(Equal(schedule))
 					}, 10, 1)
 
+					By("by updating the deployment schedule should update the CheckpointSchedule schedule")
+					newSchedule := "0 3 * * *"
+					deployment.Annotations[CHECKPOINT_RESTORE_SCHEDULE_ANNOTATION] = newSchedule
+					Expect(k8sClient.Update(ctx, deployment)).To(Succeed())
+					Eventually(func(g Gomega) {
+						var checkpointSchedule checkpointrestorev1.CheckpointSchedule
+						err := k8sClient.Get(ctx, client.ObjectKey{Namespace: deployment.Namespace, Name: deployment.Name}, &checkpointSchedule)
+						g.Expect(err).To(BeNil())
+						g.Expect(checkpointSchedule.Spec.Schedule).To(Equal(newSchedule))
+					}, 10, 1)
 				})
 			})
 		})
