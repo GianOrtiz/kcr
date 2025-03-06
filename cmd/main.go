@@ -38,7 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	checkpointrestorev1 "github.com/GianOrtiz/kcr/api/checkpoint-restore/v1"
-	"github.com/GianOrtiz/kcr/internal/controller"
+	controller "github.com/GianOrtiz/kcr/internal/controller/apps"
 	checkpointrestorecontroller "github.com/GianOrtiz/kcr/internal/controller/checkpoint-restore"
 	// +kubebuilder:scaffold:imports
 )

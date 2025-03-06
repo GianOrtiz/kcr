@@ -21,6 +21,7 @@ import (
 	"errors"
 	"regexp"
 
+	checkpointrestorev1 "github.com/GianOrtiz/kcr/api/checkpoint-restore/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,8 +35,7 @@ const CHECKPOINT_RESTORE_SCHEDULE_ANNOTATION = "kcr.io/checkpoint-restore-schedu
 // DeploymentReconciler reconciles a Deployment object
 type DeploymentReconciler struct {
 	client.Client
-	Scheme                       *runtime.Scheme
-	MonitoredDeploymentSelectors []v1.LabelSelector
+	Scheme *runtime.Scheme
 }
 
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
@@ -79,7 +79,21 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 
-	r.MonitoredDeploymentSelectors = append(r.MonitoredDeploymentSelectors, *deployment.Spec.Selector)
+	checkpointSchedule := checkpointrestorev1.CheckpointSchedule{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      deployment.Name,
+			Namespace: deployment.Namespace,
+		},
+		Spec: checkpointrestorev1.CheckpointScheduleSpec{
+			Selector: *deployment.Spec.Selector,
+			Schedule: checkpointRestoreScheduleAnnotation,
+		},
+		Status: checkpointrestorev1.CheckpointScheduleStatus{Running: false},
+	}
+	if err := r.Create(ctx, &checkpointSchedule); err != nil {
+		log.Error(err, "failed to create checkpoint schedule")
+		return ctrl.Result{Requeue: true}, err
+	}
 
 	return ctrl.Result{}, nil
 }

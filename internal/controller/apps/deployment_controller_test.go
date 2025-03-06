@@ -3,11 +3,13 @@ package controller
 import (
 	"context"
 
+	checkpointrestorev1 "github.com/GianOrtiz/kcr/api/checkpoint-restore/v1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ = Describe("Deployment Controller", func() {
@@ -20,7 +22,7 @@ var _ = Describe("Deployment Controller", func() {
 	Context("When reconciling a resource", func() {
 		Context("and the deployment has "+CHECKPOINT_RESTORE_SCHEDULE_ANNOTATION+" annotation", func() {
 			Context("and the annotation follows a cronjob schedule", func() {
-				It("should add the deployment to monitor", func() {
+				It("should create a new CheckpointSchedule for the deployment with the given schedule", func() {
 					selectorKey := "app"
 					selectorValue := "kcr-test"
 					selector := metav1.LabelSelector{
@@ -63,16 +65,10 @@ var _ = Describe("Deployment Controller", func() {
 					}
 					Expect(k8sClient.Create(ctx, deployment)).To(Succeed())
 					Eventually(func(g Gomega) {
-						isMonitoringDeployment := false
-						for _, monitoredSelectors := range deploymentReconciler.MonitoredDeploymentSelectors {
-							for key, value := range monitoredSelectors.MatchLabels {
-								if key == selectorKey && value == selectorValue {
-									isMonitoringDeployment = true
-									break
-								}
-							}
-						}
-						g.Expect(isMonitoringDeployment).To(Equal(true))
+						var checkpointSchedule checkpointrestorev1.CheckpointSchedule
+						err := k8sClient.Get(ctx, client.ObjectKey{Namespace: deployment.Namespace, Name: deployment.Name}, &checkpointSchedule)
+						g.Expect(err).To(BeNil())
+						g.Expect(checkpointSchedule.Spec.Schedule).To(Equal(schedule))
 					}, 10, 1)
 
 				})
