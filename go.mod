@@ -11,6 +11,7 @@ require (
 	k8s.io/apimachinery v0.32.1
 	k8s.io/client-go v0.32.1
 	sigs.k8s.io/controller-runtime v0.20.2
+	github.com/robfig/cron v1.2.0 
 )
 
 require (

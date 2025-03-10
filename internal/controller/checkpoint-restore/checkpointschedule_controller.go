@@ -19,37 +19,79 @@ package checkpointrestore
 import (
 	"context"
 
+	"github.com/robfig/cron"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	checkpointrestorev1 "github.com/GianOrtiz/kcr/api/checkpoint-restore/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // CheckpointScheduleReconciler reconciles a CheckpointSchedule object
 type CheckpointScheduleReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	CronJobs []*cron.Cron
 }
 
 // +kubebuilder:rbac:groups=checkpoint-restore.kcr.io,resources=checkpointschedules,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=checkpoint-restore.kcr.io,resources=checkpointschedules/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=checkpoint-restore.kcr.io,resources=checkpointschedules/finalizers,verbs=update
+// +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the CheckpointSchedule object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.20.2/pkg/reconcile
 func (r *CheckpointScheduleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	log := log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	var checkpointSchedule checkpointrestorev1.CheckpointSchedule
+	if err := r.Get(ctx, req.NamespacedName, &checkpointSchedule); err != nil {
+		if client.IgnoreNotFound(err) != nil {
+			log.Error(err, "unable to fetch CheckpointSchedule")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	// Parse the schedule into a cron expression
+	schedule := checkpointSchedule.Spec.Schedule
+	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+	if _, err := parser.Parse(schedule); err != nil {
+		log.Error(err, "failed to parse schedule", "schedule", schedule)
+		return ctrl.Result{}, err
+	}
+
+	cronJob := cron.New()
+	r.CronJobs = append(r.CronJobs, cronJob)
+	cronJob.AddFunc(schedule, func() {
+		checkpointCtx := context.Background()
+
+		// Get updated schedule to ensure it still exists and hasn't changed
+		var currentSchedule checkpointrestorev1.CheckpointSchedule
+		if err := r.Get(checkpointCtx, req.NamespacedName, &currentSchedule); err != nil {
+			log.Error(err, "failed to get current schedule")
+			return
+		}
+
+		// Verify schedule hasn't changed
+		if currentSchedule.Spec.Schedule != schedule {
+			log.Info("schedule has changed, not executing checkpoint")
+			return
+		}
+		// Get pods matching selector
+		var podList corev1.PodList
+		if err := r.List(checkpointCtx, &podList, &client.ListOptions{
+			LabelSelector: labels.SelectorFromSet(currentSchedule.Spec.Selector.MatchLabels),
+			Namespace:     req.Namespace,
+		}); err != nil {
+			log.Error(err, "failed to list pods")
+			return
+		}
+	})
+	cronJob.Start()
 
 	return ctrl.Result{}, nil
 }

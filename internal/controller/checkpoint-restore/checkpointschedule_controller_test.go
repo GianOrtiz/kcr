@@ -38,7 +38,7 @@ var _ = Describe("CheckpointSchedule Controller", func() {
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+			Namespace: "default",
 		}
 		checkpointschedule := &checkpointrestorev1.CheckpointSchedule{}
 
@@ -51,14 +51,18 @@ var _ = Describe("CheckpointSchedule Controller", func() {
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: checkpointrestorev1.CheckpointScheduleSpec{
+						Schedule: "0 0 * * *",
+						Selector: metav1.LabelSelector{
+							MatchLabels: map[string]string{"app": "test-app"},
+						},
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
 			resource := &checkpointrestorev1.CheckpointSchedule{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
@@ -66,6 +70,7 @@ var _ = Describe("CheckpointSchedule Controller", func() {
 			By("Cleanup the specific resource instance CheckpointSchedule")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 		})
+
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &CheckpointScheduleReconciler{
@@ -77,8 +82,9 @@ var _ = Describe("CheckpointSchedule Controller", func() {
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
+
+			By("Checking if the cron job was created")
+			Expect(controllerReconciler.CronJobs).To(HaveLen(1))
 		})
 	})
 })
