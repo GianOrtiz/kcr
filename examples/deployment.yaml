@@ -1,0 +1,23 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: kcr-example
+  labels:
+    app: kcr-example
+  annotations:
+    kcr.io/checkpoint-restore-schedule: "* * * * *"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kcr-example
+  template:
+    metadata:
+      labels:
+        app: kcr-example
+    spec:
+      containers:
+        - name: kcr-example
+          image: nginx:latest
+          ports:
+            - containerPort: 80
