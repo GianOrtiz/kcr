@@ -30,8 +30,8 @@ type CheckpointScheduleSpec struct {
 
 // CheckpointScheduleStatus defines the observed state of CheckpointSchedule.
 type CheckpointScheduleStatus struct {
-	// Wether the checkpoint is running or not.
-	Running bool `json:"running,omitempty"`
+	// LastRunTime is the time of the last checkpoint creation.
+	LastRunTime *metav1.Time `json:"lastRunTime,omitempty"`
 }
 
 // +kubebuilder:object:root=true

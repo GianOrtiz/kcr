@@ -18,6 +18,7 @@ package checkpointrestore
 
 import (
 	"context"
+	"time"
 
 	"github.com/robfig/cron"
 	"k8s.io/apimachinery/pkg/labels"
@@ -27,20 +28,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	checkpointrestorev1 "github.com/GianOrtiz/kcr/api/checkpoint-restore/v1"
+	"github.com/GianOrtiz/kcr/pkg/checkpoint"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // CheckpointScheduleReconciler reconciles a CheckpointSchedule object
 type CheckpointScheduleReconciler struct {
 	client.Client
-	Scheme   *runtime.Scheme
-	CronJobs []*cron.Cron
+	Scheme            *runtime.Scheme
+	CronJobs          []*cron.Cron
+	CheckpointService *checkpoint.CheckpointService
 }
 
 // +kubebuilder:rbac:groups=checkpoint-restore.kcr.io,resources=checkpointschedules,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=checkpoint-restore.kcr.io,resources=checkpointschedules/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=checkpoint-restore.kcr.io,resources=checkpointschedules/finalizers,verbs=update
-// +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -81,6 +84,7 @@ func (r *CheckpointScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 			log.Info("schedule has changed, not executing checkpoint")
 			return
 		}
+
 		// Get pods matching selector
 		var podList corev1.PodList
 		if err := r.List(checkpointCtx, &podList, &client.ListOptions{
@@ -88,6 +92,21 @@ func (r *CheckpointScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 			Namespace:     req.Namespace,
 		}); err != nil {
 			log.Error(err, "failed to list pods")
+			return
+		}
+
+		pod := podList.Items[0]
+		log.Info("checkpointing first pod", "pod", pod.Name)
+		err := r.CheckpointService.Checkpoint(pod.Name, pod.Namespace, pod.Spec.Containers[0].Name)
+		if err != nil {
+			log.Error(err, "failed to checkpoint pod")
+			return
+		}
+		log.Info("checkpoint completed", "pod", pod.Name)
+
+		currentSchedule.Status.LastRunTime = &metav1.Time{Time: time.Now()}
+		if err := r.Status().Update(checkpointCtx, &currentSchedule); err != nil {
+			log.Error(err, "failed to update CheckpointSchedule status")
 			return
 		}
 	})

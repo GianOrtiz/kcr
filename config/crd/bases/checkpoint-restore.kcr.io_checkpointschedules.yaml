@@ -93,9 +93,10 @@ spec:
           status:
             description: CheckpointScheduleStatus defines the observed state of CheckpointSchedule.
             properties:
-              running:
-                description: Wether the checkpoint is running or not.
-                type: boolean
+              lastRunTime:
+                description: LastRunTime is the time of the last checkpoint creation.
+                format: date-time
+                type: string
             type: object
         type: object
     served: true

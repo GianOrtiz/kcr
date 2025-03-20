@@ -98,7 +98,7 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			Selector: *deployment.Spec.Selector,
 			Schedule: checkpointRestoreScheduleAnnotation,
 		},
-		Status: checkpointrestorev1.CheckpointScheduleStatus{Running: false},
+		Status: checkpointrestorev1.CheckpointScheduleStatus{LastRunTime: nil},
 	}
 	if err := r.Create(ctx, &checkpointSchedule); err != nil {
 		log.Error(err, "failed to create CheckpointSchedule")
