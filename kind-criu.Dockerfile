@@ -49,6 +49,7 @@ RUN echo "Installing Packages ..." \
 
 # Configure cri-o to use CRIU for checkpoint/restore.
 COPY crio.conf /etc/crio/crio.conf
+COPY crio.conf /etc/crio/crio.conf.d/11-crio.conf
 
 # Configuration so CRIU can checkpoint Pods in the cluster.
 COPY criu.conf /etc/criu/default.conf
