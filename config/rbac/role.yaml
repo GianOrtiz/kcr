@@ -33,6 +33,7 @@ rules:
 - apiGroups:
   - checkpoint-restore.kcr.io
   resources:
+  - checkpoints
   - checkpointschedules
   verbs:
   - create
@@ -45,12 +46,14 @@ rules:
 - apiGroups:
   - checkpoint-restore.kcr.io
   resources:
+  - checkpoints/finalizers
   - checkpointschedules/finalizers
   verbs:
   - update
 - apiGroups:
   - checkpoint-restore.kcr.io
   resources:
+  - checkpoints/status
   - checkpointschedules/status
   verbs:
   - get

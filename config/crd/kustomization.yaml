@@ -3,6 +3,7 @@
 # It should be run by config/default
 resources:
 - bases/checkpoint-restore.kcr.io_checkpointschedules.yaml
+- bases/checkpoint-restore.kcr.io_checkpoints.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:

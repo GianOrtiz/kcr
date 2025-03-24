@@ -230,6 +230,13 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "CheckpointSchedule")
 		os.Exit(1)
 	}
+	if err = (&checkpointrestorecontroller.CheckpointReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Checkpoint")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	if metricsCertWatcher != nil {

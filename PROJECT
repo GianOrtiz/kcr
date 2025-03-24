@@ -24,4 +24,13 @@ resources:
   kind: CheckpointSchedule
   path: github.com/GianOrtiz/kcr/api/checkpoint-restore/v1
   version: v1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: kcr.io
+  group: checkpoint-restore
+  kind: Checkpoint
+  path: github.com/GianOrtiz/kcr/api/checkpoint-restore/v1
+  version: v1
 version: "3"
