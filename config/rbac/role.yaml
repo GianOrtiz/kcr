@@ -5,6 +5,14 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - apps
   resources:
   - deployments
@@ -33,6 +41,7 @@ rules:
 - apiGroups:
   - checkpoint-restore.kcr.io
   resources:
+  - checkpointrequests
   - checkpoints
   - checkpointschedules
   verbs:
@@ -46,6 +55,7 @@ rules:
 - apiGroups:
   - checkpoint-restore.kcr.io
   resources:
+  - checkpointrequests/finalizers
   - checkpoints/finalizers
   - checkpointschedules/finalizers
   verbs:
@@ -53,6 +63,7 @@ rules:
 - apiGroups:
   - checkpoint-restore.kcr.io
   resources:
+  - checkpointrequests/status
   - checkpoints/status
   - checkpointschedules/status
   verbs:

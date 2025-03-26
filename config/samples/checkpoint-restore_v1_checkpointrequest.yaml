@@ -1,0 +1,9 @@
+apiVersion: checkpoint-restore.kcr.io/v1
+kind: CheckpointRequest
+metadata:
+  labels:
+    app.kubernetes.io/name: kcr
+    app.kubernetes.io/managed-by: kustomize
+  name: checkpointrequest-sample
+spec:
+  # TODO(user): Add fields here

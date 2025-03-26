@@ -223,9 +223,8 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&checkpointrestorecontroller.CheckpointScheduleReconciler{
-		Client:            mgr.GetClient(),
-		Scheme:            mgr.GetScheme(),
-		CheckpointService: checkpointService,
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CheckpointSchedule")
 		os.Exit(1)
@@ -235,6 +234,14 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Checkpoint")
+		os.Exit(1)
+	}
+	if err = (&checkpointrestorecontroller.CheckpointRequestReconciler{
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
+		CheckpointService: checkpointService,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "CheckpointRequest")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

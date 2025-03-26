@@ -18,6 +18,7 @@ package checkpointrestore
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/robfig/cron"
@@ -28,7 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	checkpointrestorev1 "github.com/GianOrtiz/kcr/api/checkpoint-restore/v1"
-	"github.com/GianOrtiz/kcr/pkg/checkpoint"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -36,14 +36,14 @@ import (
 // CheckpointScheduleReconciler reconciles a CheckpointSchedule object
 type CheckpointScheduleReconciler struct {
 	client.Client
-	Scheme            *runtime.Scheme
-	CronJobs          []*cron.Cron
-	CheckpointService *checkpoint.CheckpointService
+	Scheme   *runtime.Scheme
+	CronJobs []*cron.Cron
 }
 
 // +kubebuilder:rbac:groups=checkpoint-restore.kcr.io,resources=checkpointschedules,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=checkpoint-restore.kcr.io,resources=checkpointschedules/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=checkpoint-restore.kcr.io,resources=checkpointschedules/finalizers,verbs=update
+// +kubebuilder:rbac:groups=checkpoint-restore.kcr.io,resources=checkpointrequests,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -95,15 +95,59 @@ func (r *CheckpointScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return
 		}
 
-		pod := podList.Items[0]
-		log.Info("checkpointing first pod", "pod", pod.Name)
-		err := r.CheckpointService.Checkpoint(pod.Name, pod.Namespace, pod.Spec.Containers[0].Name)
-		if err != nil {
-			log.Error(err, "failed to checkpoint pod")
+		if len(podList.Items) == 0 {
+			log.Info("no pods found matching selector", "selector", currentSchedule.Spec.Selector)
 			return
 		}
-		log.Info("checkpoint completed", "pod", pod.Name)
 
+		pod := podList.Items[0]
+		log.Info("creating checkpoint request for pod", "pod", pod.Name)
+
+		// Create a CheckpointRequest resource
+		checkpointRequest := &checkpointrestorev1.CheckpointRequest{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%s-%s-%d", currentSchedule.Name, pod.Name, time.Now().Unix()),
+				Namespace: req.Namespace,
+				Labels: map[string]string{
+					"app":           "checkpoint-restore",
+					"pod":           pod.Name,
+					"pod-ns":        pod.Namespace,
+					"schedule-name": currentSchedule.Name,
+				},
+			},
+			Spec: checkpointrestorev1.CheckpointRequestSpec{
+				PodReference: checkpointrestorev1.PodReference{
+					Name:      pod.Name,
+					Namespace: pod.Namespace,
+				},
+				ContainerName: pod.Spec.Containers[0].Name,
+				CheckpointScheduleRef: &corev1.ObjectReference{
+					Kind:       "CheckpointSchedule",
+					Name:       currentSchedule.Name,
+					Namespace:  currentSchedule.Namespace,
+					UID:        currentSchedule.UID,
+					APIVersion: currentSchedule.APIVersion,
+				},
+			},
+			Status: checkpointrestorev1.CheckpointRequestStatus{
+				Phase: "Pending",
+			},
+		}
+
+		// Set the controller reference to the CheckpointSchedule
+		if err := ctrl.SetControllerReference(&currentSchedule, checkpointRequest, r.Scheme); err != nil {
+			log.Error(err, "failed to set controller reference for CheckpointRequest")
+			return
+		}
+
+		// Create the CheckpointRequest resource
+		if err := r.Create(checkpointCtx, checkpointRequest); err != nil {
+			log.Error(err, "failed to create CheckpointRequest resource")
+			return
+		}
+		log.Info("created checkpoint request", "checkpointRequest", checkpointRequest.Name)
+
+		// Update the CheckpointSchedule status with the last run time
 		currentSchedule.Status.LastRunTime = &metav1.Time{Time: time.Now()}
 		if err := r.Status().Update(checkpointCtx, &currentSchedule); err != nil {
 			log.Error(err, "failed to update CheckpointSchedule status")

@@ -2,4 +2,5 @@
 resources:
 - checkpoint-restore_v1_checkpointschedule.yaml
 - checkpoint-restore_v1_checkpoint.yaml
+- checkpoint-restore_v1_checkpointrequest.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

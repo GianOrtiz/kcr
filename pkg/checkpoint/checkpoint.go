@@ -9,8 +9,12 @@ import (
 	"github.com/GianOrtiz/kcr/pkg/kubelet"
 )
 
+type CheckpointService interface {
+	Checkpoint(podID, podNamespace, containerName string) error
+}
+
 // CheckpointService is a service to abstract checkpointing of a pod container..
-type CheckpointService struct {
+type checkpointService struct {
 	kubeletClient *kubelet.KubeletClient
 	nodeIP        string
 	nodePort      int
@@ -18,12 +22,12 @@ type CheckpointService struct {
 
 // New creates a new CheckpointService to work in the given node.
 // TODO: we should build this value when checkpointing the pod from the Node metadata.
-func New(nodeIP string, nodePort int) (*CheckpointService, error) {
+func New(nodeIP string, nodePort int) (CheckpointService, error) {
 	kubeletClient, err := kubelet.NewForKind("kind")
 	if err != nil {
 		return nil, err
 	}
-	return &CheckpointService{
+	return &checkpointService{
 		kubeletClient: kubeletClient,
 		nodeIP:        nodeIP,
 		nodePort:      nodePort,
@@ -31,7 +35,7 @@ func New(nodeIP string, nodePort int) (*CheckpointService, error) {
 }
 
 // Checkpoint checkpoints a pod container.
-func (s *CheckpointService) Checkpoint(podID, podNamespace, containerName string) error {
+func (s *checkpointService) Checkpoint(podID, podNamespace, containerName string) error {
 	address := fmt.Sprintf(
 		"https://%s:%d/checkpoint/%s/%s/%s",
 		s.nodeIP,

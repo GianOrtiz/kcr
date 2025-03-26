@@ -4,6 +4,7 @@
 resources:
 - bases/checkpoint-restore.kcr.io_checkpointschedules.yaml
 - bases/checkpoint-restore.kcr.io_checkpoints.yaml
+- bases/checkpoint-restore.kcr.io_checkpointrequests.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:
