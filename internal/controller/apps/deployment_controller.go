@@ -86,6 +86,8 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			log.Error(err, "failed to update CheckpointSchedule")
 			return ctrl.Result{Requeue: true}, err
 		}
+
+		return ctrl.Result{}, nil
 	}
 
 	// Create the CheckpointSchedule as it does not exist yet.
