@@ -222,10 +222,8 @@ func main() {
 		setupLog.Error(err, "unable to create checkpoint service")
 		os.Exit(1)
 	}
-	if err = (&checkpointrestorecontroller.CheckpointScheduleReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	checkpointScheduleReconciler := checkpointrestorecontroller.NewCheckpointScheduleReconciler(mgr.GetClient(), mgr.GetScheme())
+	if err = checkpointScheduleReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CheckpointSchedule")
 		os.Exit(1)
 	}

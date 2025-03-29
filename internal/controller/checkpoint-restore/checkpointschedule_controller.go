@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/robfig/cron"
+	"github.com/robfig/cron/v3"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -37,7 +37,15 @@ import (
 type CheckpointScheduleReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
-	CronJobs []*cron.Cron
+	CronJobs map[string]*cron.Cron
+}
+
+func NewCheckpointScheduleReconciler(client client.Client, scheme *runtime.Scheme) *CheckpointScheduleReconciler {
+	return &CheckpointScheduleReconciler{
+		Client:   client,
+		Scheme:   scheme,
+		CronJobs: make(map[string]*cron.Cron),
+	}
 }
 
 // +kubebuilder:rbac:groups=checkpoint-restore.kcr.io,resources=checkpointschedules,verbs=get;list;watch;create;update;patch;delete
@@ -61,27 +69,22 @@ func (r *CheckpointScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 
 	// Parse the schedule into a cron expression
 	schedule := checkpointSchedule.Spec.Schedule
-	parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
-	if _, err := parser.Parse(schedule); err != nil {
+	if _, err := cron.ParseStandard(schedule); err != nil {
 		log.Error(err, "failed to parse schedule", "schedule", schedule)
 		return ctrl.Result{}, err
 	}
 
+	if r.CronJobs[checkpointSchedule.Name] != nil {
+		delete(r.CronJobs, checkpointSchedule.Name)
+	}
 	cronJob := cron.New()
-	r.CronJobs = append(r.CronJobs, cronJob)
+	r.CronJobs[checkpointSchedule.Name] = cronJob
+
 	cronJob.AddFunc(schedule, func() {
 		checkpointCtx := context.Background()
-
-		// Get updated schedule to ensure it still exists and hasn't changed
 		var currentSchedule checkpointrestorev1.CheckpointSchedule
 		if err := r.Get(checkpointCtx, req.NamespacedName, &currentSchedule); err != nil {
 			log.Error(err, "failed to get current schedule")
-			return
-		}
-
-		// Verify schedule hasn't changed
-		if currentSchedule.Spec.Schedule != schedule {
-			log.Info("schedule has changed, not executing checkpoint")
 			return
 		}
 
@@ -154,8 +157,8 @@ func (r *CheckpointScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 			return
 		}
 	})
-	cronJob.Start()
 
+	cronJob.Start()
 	return ctrl.Result{}, nil
 }
 

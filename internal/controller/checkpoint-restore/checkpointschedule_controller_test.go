@@ -73,10 +73,7 @@ var _ = Describe("CheckpointSchedule Controller", func() {
 
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
-			controllerReconciler := &CheckpointScheduleReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
-			}
+			controllerReconciler := NewCheckpointScheduleReconciler(k8sClient, k8sClient.Scheme())
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
@@ -85,6 +82,33 @@ var _ = Describe("CheckpointSchedule Controller", func() {
 
 			By("Checking if the cron job was created")
 			Expect(controllerReconciler.CronJobs).To(HaveLen(1))
+		})
+
+		It("should update the cron job when the schedule changes", func() {
+			By("Reconciling the created resource")
+			controllerReconciler := NewCheckpointScheduleReconciler(k8sClient, k8sClient.Scheme())
+
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Updating the schedule")
+			resource := &checkpointrestorev1.CheckpointSchedule{}
+			err = k8sClient.Get(ctx, typeNamespacedName, resource)
+			Expect(err).NotTo(HaveOccurred())
+
+			resource.Spec.Schedule = "5 * * * *"
+			Expect(k8sClient.Update(ctx, resource)).To(Succeed())
+
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Checking if the cron job was updated")
+			Expect(controllerReconciler.CronJobs).To(HaveLen(1))
+			Expect(controllerReconciler.CronJobs[resourceName].Entries()).To(HaveLen(1))
 		})
 	})
 })
