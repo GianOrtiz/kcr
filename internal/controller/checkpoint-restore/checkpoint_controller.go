@@ -25,12 +25,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	checkpointrestorev1 "github.com/GianOrtiz/kcr/api/checkpoint-restore/v1"
+	"github.com/GianOrtiz/kcr/pkg/imagebuilder"
 )
 
 // CheckpointReconciler reconciles a Checkpoint object
 type CheckpointReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme       *runtime.Scheme
+	imageBuilder imagebuilder.ImageBuilder
 }
 
 // +kubebuilder:rbac:groups=checkpoint-restore.kcr.io,resources=checkpoints,verbs=get;list;watch;create;update;patch;delete
@@ -58,7 +60,21 @@ func (r *CheckpointReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, nil
 	}
 
-	// TODO(user): your logic here
+	if err := r.imageBuilder.BuildFromCheckpoint(checkpoint.Spec.CheckpointData, checkpoint.Spec.CheckpointData, ctx); err != nil {
+		log.Error(err, "unable to build image from checkpoint")
+		checkpoint.Status.Phase = "Failed"
+		if err := r.Status().Update(ctx, &checkpoint); err != nil {
+			log.Error(err, "unable to update checkpoint status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	checkpoint.Status.Phase = "ImageBuilt"
+	if err := r.Status().Update(ctx, &checkpoint); err != nil {
+		log.Error(err, "unable to update checkpoint status")
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }

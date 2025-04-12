@@ -18,6 +18,7 @@ package checkpointrestore
 
 import (
 	"context"
+	"fmt"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -71,17 +72,42 @@ var _ = Describe("Checkpoint Controller", func() {
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 		})
 
-		It("should successfully reconcile the resource", func() {
+		It("should successfully reconcile the resource when the image builder succeeds", func() {
 			By("Reconciling the created resource")
+			imageBuilder := mockImageBuilder{mockedResult: nil}
 			controllerReconciler := &CheckpointReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:       k8sClient,
+				Scheme:       k8sClient.Scheme(),
+				imageBuilder: &imageBuilder,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
+
+			var checkpoint checkpointrestorev1.Checkpoint
+			Expect(k8sClient.Get(ctx, typeNamespacedName, &checkpoint)).To(Succeed())
+			Expect(checkpoint.Status.Phase).To(Equal("ImageBuilt"))
+		})
+
+		It("should fail to reconcile the resource when the image builder fails", func() {
+			By("Reconciling the created resource")
+			imageBuilder := mockImageBuilder{mockedResult: fmt.Errorf("mocked error")}
+			controllerReconciler := &CheckpointReconciler{
+				Client:       k8sClient,
+				Scheme:       k8sClient.Scheme(),
+				imageBuilder: &imageBuilder,
+			}
+
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			var checkpoint checkpointrestorev1.Checkpoint
+			Expect(k8sClient.Get(ctx, typeNamespacedName, &checkpoint)).To(Succeed())
+			Expect(checkpoint.Status.Phase).To(Equal("Failed"))
 		})
 	})
 })

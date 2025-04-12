@@ -76,6 +76,15 @@ func (m *mockCheckpointService) Checkpoint(podID, podNamespace, containerName st
 	return m.mockedResult
 }
 
+// Mock implementation of ImageBuilder.
+type mockImageBuilder struct {
+	mockedResult error
+}
+
+func (m *mockImageBuilder) BuildFromCheckpoint(checkpointLocation, imageName string, ctx context.Context) error {
+	return m.mockedResult
+}
+
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
