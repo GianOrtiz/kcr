@@ -78,7 +78,7 @@ var _ = Describe("Checkpoint Controller", func() {
 			controllerReconciler := &CheckpointReconciler{
 				Client:       k8sClient,
 				Scheme:       k8sClient.Scheme(),
-				imageBuilder: &imageBuilder,
+				ImageBuilder: &imageBuilder,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
@@ -97,7 +97,7 @@ var _ = Describe("Checkpoint Controller", func() {
 			controllerReconciler := &CheckpointReconciler{
 				Client:       k8sClient,
 				Scheme:       k8sClient.Scheme(),
-				imageBuilder: &imageBuilder,
+				ImageBuilder: &imageBuilder,
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

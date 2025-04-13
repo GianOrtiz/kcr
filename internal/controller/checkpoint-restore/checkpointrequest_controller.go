@@ -60,7 +60,6 @@ func (r *CheckpointRequestReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, nil
 	}
 
-	log.Info("checkpointRequest", "checkpointRequest", checkpointRequest)
 	// If it's already completed or failed, no need to process it again
 	if checkpointRequest.Status.Phase == "Completed" || checkpointRequest.Status.Phase == "Failed" {
 		return ctrl.Result{}, nil
@@ -103,6 +102,20 @@ func (r *CheckpointRequestReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	// Checkpoint the pod
+	nodeName := pod.Spec.NodeName
+	var node corev1.Node
+	if err := r.Get(ctx, client.ObjectKey{Name: nodeName}, &node); err != nil {
+		log.Error(err, "failed to get node", "node", nodeName)
+		return ctrl.Result{}, err
+	}
+	var nodeIP string
+	for _, address := range node.Status.Addresses {
+		if address.Type == corev1.NodeInternalIP {
+			nodeIP = address.Address
+		}
+	}
+	log.Info("Retrieved node IP from node", "nodeIP", nodeIP)
+
 	log.Info("checkpointing pod", "pod", podName, "namespace", podNamespace, "container", containerName)
 	err := r.CheckpointService.Checkpoint(podName, podNamespace, containerName)
 	if err != nil {

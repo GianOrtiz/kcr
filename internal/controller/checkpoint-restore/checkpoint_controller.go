@@ -18,7 +18,13 @@ package checkpointrestore
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"regexp"
+	"strconv"
+	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,11 +34,14 @@ import (
 	"github.com/GianOrtiz/kcr/pkg/imagebuilder"
 )
 
+var checkpointEstimatePathRegex = regexp.MustCompile(`^/var/lib/kubelet/checkpoints/checkpoint-.+-(\d+)\.tar$`)
+var checkpointPathRegex = regexp.MustCompile(`^/var/lib/kubelet/checkpoints/checkpoint-.+-((-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?(Z|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])?)\.tar$`)
+
 // CheckpointReconciler reconciles a Checkpoint object
 type CheckpointReconciler struct {
 	client.Client
 	Scheme       *runtime.Scheme
-	imageBuilder imagebuilder.ImageBuilder
+	ImageBuilder imagebuilder.ImageBuilder
 }
 
 // +kubebuilder:rbac:groups=checkpoint-restore.kcr.io,resources=checkpoints,verbs=get;list;watch;create;update;patch;delete
@@ -60,9 +69,99 @@ func (r *CheckpointReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, nil
 	}
 
-	if err := r.imageBuilder.BuildFromCheckpoint(checkpoint.Spec.CheckpointData, checkpoint.Spec.CheckpointData, ctx); err != nil {
+	checkpointPath := checkpoint.Spec.CheckpointData
+	matches := checkpointEstimatePathRegex.FindStringSubmatch(checkpointPath)
+
+	if len(matches) < 2 {
+		err := fmt.Errorf("checkpointData path %q does not match expected pattern %q", checkpointPath, checkpointEstimatePathRegex.String())
+		log.Error(err, "Invalid checkpoint data path format")
+
+		checkpoint.Status.Phase = "Failed"
+		checkpoint.Status.FailedReason = err.Error()
+		now := metav1.Now()
+		checkpoint.Status.LastTransitionTime = &now
+		if updateErr := r.Status().Update(ctx, &checkpoint); updateErr != nil {
+			log.Error(updateErr, "Failed to update Checkpoint status to Failed for invalid path")
+			return ctrl.Result{}, updateErr
+		}
+		return ctrl.Result{}, nil
+	}
+
+	timestamp, err := strconv.Atoi(matches[1])
+	if err != nil {
+		log.Error(err, "unable to convert timestamp to int")
+		checkpoint.Status.Phase = "Failed"
+		checkpoint.Status.FailedReason = err.Error()
+		now := metav1.Now()
+		checkpoint.Status.LastTransitionTime = &now
+		if updateErr := r.Status().Update(ctx, &checkpoint); updateErr != nil {
+			log.Error(updateErr, "failed to update Checkpoint status to Failed for invalid path timestamp")
+			return ctrl.Result{}, updateErr
+		}
+		return ctrl.Result{}, nil
+	}
+	log.Info("Extracted timestamp from checkpoint path", "timestamp", timestamp)
+
+	// Get all checkpoints and matches the required closer timestamp of the files so we can get the closest checkpoint.
+	checkpointFiles, err := os.ReadDir("/var/lib/kubelet/checkpoints")
+	if err != nil {
+		log.Error(err, "unable to read checkpoints directory")
+		checkpoint.Status.Phase = "Failed"
+		checkpoint.Status.FailedReason = "unable to read checkpoints directory" + err.Error()
+		if err := r.Status().Update(ctx, &checkpoint); err != nil {
+			log.Error(err, "unable to update checkpoint status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	var checkpointClosestFile string
+	for _, checkpointFile := range checkpointFiles {
+		if isDir := checkpointFile.IsDir(); !isDir {
+			filename := "/var/lib/kubelet/checkpoints/" + checkpointFile.Name()
+			checkpointTimestampMatches := checkpointPathRegex.FindStringSubmatch(filename)
+			if len(matches) < 2 {
+				err := fmt.Errorf("checkpointData path %q does not match expected pattern %q", filename, checkpointPathRegex.String())
+				log.Error(err, "Invalid checkpoint data path format")
+
+				checkpoint.Status.Phase = "Failed"
+				checkpoint.Status.FailedReason = err.Error()
+				now := metav1.Now()
+				checkpoint.Status.LastTransitionTime = &now
+				if updateErr := r.Status().Update(ctx, &checkpoint); updateErr != nil {
+					log.Error(updateErr, "Failed to update Checkpoint status to Failed for invalid path")
+					return ctrl.Result{}, updateErr
+				}
+				return ctrl.Result{}, nil
+			}
+
+			checkpointTimestamp, err := time.Parse(time.RFC3339, checkpointTimestampMatches[1])
+			if err != nil {
+				log.Error(err, "unable to parse checkpoint timestamp")
+				checkpoint.Status.Phase = "Failed"
+				checkpoint.Status.FailedReason = err.Error()
+				now := metav1.Now()
+				checkpoint.Status.LastTransitionTime = &now
+				if updateErr := r.Status().Update(ctx, &checkpoint); updateErr != nil {
+					log.Error(updateErr, "Failed to update Checkpoint status to Failed for invalid path")
+					return ctrl.Result{}, updateErr
+				}
+				return ctrl.Result{}, nil
+			}
+
+			differenceOfTime := (int)(checkpointTimestamp.Unix()) - timestamp
+			differenceIsCloser := differenceOfTime <= 60 || differenceOfTime >= -60
+			if differenceIsCloser {
+				checkpointClosestFile = "/var/lib/kubelet/checkpoints/" + checkpointFile.Name()
+				break
+			}
+		}
+	}
+
+	if err := r.ImageBuilder.BuildFromCheckpoint(checkpointClosestFile, "docker.io/gianortiz/checkpoint", ctx); err != nil {
 		log.Error(err, "unable to build image from checkpoint")
 		checkpoint.Status.Phase = "Failed"
+		checkpoint.Status.FailedReason = err.Error()
 		if err := r.Status().Update(ctx, &checkpoint); err != nil {
 			log.Error(err, "unable to update checkpoint status")
 			return ctrl.Result{}, err

@@ -41,6 +41,9 @@ import (
 	controller "github.com/GianOrtiz/kcr/internal/controller/apps"
 	checkpointrestorecontroller "github.com/GianOrtiz/kcr/internal/controller/checkpoint-restore"
 	"github.com/GianOrtiz/kcr/pkg/checkpoint"
+	"github.com/GianOrtiz/kcr/pkg/imagebuilder"
+	"github.com/containers/buildah"
+	"github.com/containers/storage/pkg/unshare"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -58,6 +61,11 @@ func init() {
 
 // nolint:gocyclo
 func main() {
+	if buildah.InitReexec() {
+		return
+	}
+	unshare.MaybeReexecUsingUserNamespace(false)
+
 	var metricsAddr string
 	var kubeletAddr string
 	var kubeletPort int
@@ -70,7 +78,7 @@ func main() {
 	var tlsOpts []func(*tls.Config)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
-	flag.StringVar(&kubeletAddr, "kubelet-addr", "172.20.0.2", "The address of the kubelet.") // TODO: we should build this value when checkpointing the pod from the Node metadata.
+	flag.StringVar(&kubeletAddr, "kubelet-addr", "172.21.0.3", "The address of the kubelet.") // TODO: we should build this value when checkpointing the pod from the Node metadata.
 	flag.IntVar(&kubeletPort, "kubelet-port", 10250, "The port of the kubelet.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -227,9 +235,16 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "CheckpointSchedule")
 		os.Exit(1)
 	}
+
+	imageBuilder, err := imagebuilder.NewBuildahImageBuilder()
+	if err != nil {
+		setupLog.Error(err, "unable to create image builder")
+		os.Exit(1)
+	}
 	if err = (&checkpointrestorecontroller.CheckpointReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:       mgr.GetClient(),
+		Scheme:       mgr.GetScheme(),
+		ImageBuilder: imageBuilder,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Checkpoint")
 		os.Exit(1)

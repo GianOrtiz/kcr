@@ -10,6 +10,9 @@ nodes:
       nodeRegistration:
         criSocket: unix:///var/run/crio/crio.sock
   - role: worker
+    extraMounts:
+    - hostPath: /var/lib/kubelet/checkpoints
+      containerPath: /var/lib/kubelet/checkpoints
     kubeadmConfigPatches:
     - |
       kind: JoinConfiguration

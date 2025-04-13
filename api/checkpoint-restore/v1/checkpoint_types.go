@@ -68,6 +68,9 @@ type CheckpointStatus struct {
 
 	// LastTransitionTime is the last time the status changed from one status to another
 	LastTransitionTime *metav1.Time `json:"lastTransitionTime,omitempty"`
+
+	// FailedReason is the message for the reason the checkpoint failed.
+	FailedReason string `json:"failedReason,omitempty"`
 }
 
 // +kubebuilder:object:root=true

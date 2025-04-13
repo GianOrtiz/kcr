@@ -220,6 +220,10 @@ spec:
                   - type
                   type: object
                 type: array
+              failedReason:
+                description: FailedReason is the message for the reason the checkpoint
+                  failed.
+                type: string
               lastTransitionTime:
                 description: LastTransitionTime is the last time the status changed
                   from one status to another
