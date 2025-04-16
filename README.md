@@ -1,6 +1,11 @@
 # kcr
 // TODO(user): Add simple overview of use/purpose
 
+Requires in cluster:
+
+1. CRIU
+2. btrfs
+
 ## Description
 // TODO(user): An in-depth paragraph about your project and overview of use
 
