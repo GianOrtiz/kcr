@@ -7,6 +7,14 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - nodes/proxy
+  verbs:
+  - create
+  - get
+  - post
+- apiGroups:
+  - ""
+  resources:
   - pods
   verbs:
   - get

@@ -43,6 +43,7 @@ type CheckpointRequestReconciler struct {
 // +kubebuilder:rbac:groups=checkpoint-restore.kcr.io,resources=checkpointrequests/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=checkpoint-restore.kcr.io,resources=checkpointrequests/finalizers,verbs=update
 // +kubebuilder:rbac:groups=checkpoint-restore.kcr.io,resources=checkpoints,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=nodes/proxy,verbs=get;create;post
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -101,23 +102,9 @@ func (r *CheckpointRequestReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, err
 	}
 
-	// Checkpoint the pod
 	nodeName := pod.Spec.NodeName
-	var node corev1.Node
-	if err := r.Get(ctx, client.ObjectKey{Name: nodeName}, &node); err != nil {
-		log.Error(err, "failed to get node", "node", nodeName)
-		return ctrl.Result{}, err
-	}
-	var nodeIP string
-	for _, address := range node.Status.Addresses {
-		if address.Type == corev1.NodeInternalIP {
-			nodeIP = address.Address
-		}
-	}
-	log.Info("Retrieved node IP from node", "nodeIP", nodeIP)
-
-	log.Info("checkpointing pod", "pod", podName, "namespace", podNamespace, "container", containerName)
-	err := r.CheckpointService.Checkpoint(podName, podNamespace, containerName)
+	log.Info("checkpointing pod", "nodeName", nodeName, "pod", podName, "namespace", podNamespace, "container", containerName)
+	err := r.CheckpointService.Checkpoint(nodeName, podName, podNamespace, containerName)
 	if err != nil {
 		log.Error(err, "failed to checkpoint pod")
 

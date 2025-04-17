@@ -5,7 +5,7 @@ metadata:
   labels:
     app: kcr-example
   annotations:
-    kcr.io/checkpoint-restore-schedule: "*/5 * * * *"
+    kcr.io/checkpoint-restore-schedule: "*/1 * * * *"
 spec:
   replicas: 1
   selector:

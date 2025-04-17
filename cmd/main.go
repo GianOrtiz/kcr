@@ -67,8 +67,8 @@ func main() {
 	unshare.MaybeReexecUsingUserNamespace(false)
 
 	var metricsAddr string
-	var kubeletAddr string
-	var kubeletPort int
+	var masterNodeIP string
+	var masterNodePort int
 	var metricsCertPath, metricsCertName, metricsCertKey string
 	var webhookCertPath, webhookCertName, webhookCertKey string
 	var enableLeaderElection bool
@@ -78,8 +78,8 @@ func main() {
 	var tlsOpts []func(*tls.Config)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
-	flag.StringVar(&kubeletAddr, "kubelet-addr", "172.21.0.3", "The address of the kubelet.") // TODO: we should build this value when checkpointing the pod from the Node metadata.
-	flag.IntVar(&kubeletPort, "kubelet-port", 10250, "The port of the kubelet.")
+	flag.StringVar(&masterNodeIP, "master-node-ip", "172.20.0.2", "The address of the Kubernetes master node.")
+	flag.IntVar(&masterNodePort, "master-node-port", 6443, "The port of the Kubernetes master node.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
@@ -224,8 +224,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// TODO: we should build this value when checkpointing the pod from the Node metadata.
-	checkpointService, err := checkpoint.New(kubeletAddr, kubeletPort)
+	checkpointService, err := checkpoint.New(masterNodeIP, masterNodePort)
 	if err != nil {
 		setupLog.Error(err, "unable to create checkpoint service")
 		os.Exit(1)

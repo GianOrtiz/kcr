@@ -10,40 +10,41 @@ import (
 )
 
 type CheckpointService interface {
-	Checkpoint(podID, podNamespace, containerName string) error
+	Checkpoint(podNode, podID, podNamespace, containerName string) error
 }
 
 // CheckpointService is a service to abstract checkpointing of a pod container..
 type checkpointService struct {
-	kubeletClient *kubelet.KubeletClient
-	nodeIP        string
-	nodePort      int
+	kubeletClient  *kubelet.KubeletClient
+	masterNodeIP   string
+	masterNodePort int
 }
 
 // New creates a new CheckpointService to work in the given node.
-// TODO: we should build this value when checkpointing the pod from the Node metadata.
-func New(nodeIP string, nodePort int) (CheckpointService, error) {
+func New(masterNodeIP string, masterNodePort int) (CheckpointService, error) {
 	kubeletClient, err := kubelet.NewForKind("kind")
 	if err != nil {
 		return nil, err
 	}
 	return &checkpointService{
-		kubeletClient: kubeletClient,
-		nodeIP:        nodeIP,
-		nodePort:      nodePort,
+		kubeletClient:  kubeletClient,
+		masterNodeIP:   masterNodeIP,
+		masterNodePort: masterNodePort,
 	}, nil
 }
 
 // Checkpoint checkpoints a pod container.
-func (s *checkpointService) Checkpoint(podID, podNamespace, containerName string) error {
+func (s *checkpointService) Checkpoint(podNode, podID, podNamespace, containerName string) error {
 	address := fmt.Sprintf(
-		"https://%s:%d/checkpoint/%s/%s/%s",
-		s.nodeIP,
-		s.nodePort,
+		"https://%s:%d/api/v1/nodes/%s/proxy/checkpoint/%s/%s/%s",
+		s.masterNodeIP,
+		s.masterNodePort,
+		podNode,
 		podNamespace,
 		podID,
 		containerName,
 	)
+	log.Println("address:", address)
 
 	res, err := s.kubeletClient.Post(address, "application/json", nil)
 	if err != nil {

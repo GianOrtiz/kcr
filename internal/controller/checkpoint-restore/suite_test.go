@@ -72,7 +72,7 @@ type mockCheckpointService struct {
 	mockedResult error
 }
 
-func (m *mockCheckpointService) Checkpoint(podID, podNamespace, containerName string) error {
+func (m *mockCheckpointService) Checkpoint(podNode, podID, podNamespace, containerName string) error {
 	return m.mockedResult
 }
 
