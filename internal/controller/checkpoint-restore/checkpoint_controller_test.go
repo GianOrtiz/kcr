@@ -54,9 +54,12 @@ var _ = Describe("Checkpoint Controller", func() {
 						Namespace: "default",
 					},
 					Status: checkpointrestorev1.CheckpointStatus{
-						CheckpointImage:    "",
+						CheckpointImage:    "image-reference",
 						Phase:              "Created",
 						LastTransitionTime: &now,
+					},
+					Spec: checkpointrestorev1.CheckpointSpec{
+						CheckpointData: "/var/lib/kubelet/checkpoints/checkpoint-kcr-example-5b9845566-rhnj2_default-kcr-example-1744851420.tar",
 					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
