@@ -69,6 +69,7 @@ var _ = Describe("Deployment Controller", func() {
 						err := k8sClient.Get(ctx, client.ObjectKey{Namespace: deployment.Namespace, Name: deployment.Name}, &checkpointSchedule)
 						g.Expect(err).To(BeNil())
 						g.Expect(checkpointSchedule.Spec.Schedule).To(Equal(schedule))
+						g.Expect(checkpointSchedule.ObjectMeta.OwnerReferences[0].Name).To(Equal(deployment.Name))
 					}, 10, 1)
 
 					By("by updating the deployment schedule should update the CheckpointSchedule schedule")
@@ -80,6 +81,7 @@ var _ = Describe("Deployment Controller", func() {
 						err := k8sClient.Get(ctx, client.ObjectKey{Namespace: deployment.Namespace, Name: deployment.Name}, &checkpointSchedule)
 						g.Expect(err).To(BeNil())
 						g.Expect(checkpointSchedule.Spec.Schedule).To(Equal(newSchedule))
+						g.Expect(checkpointSchedule.ObjectMeta.OwnerReferences[0].Name).To(Equal(deployment.Name))
 					}, 10, 1)
 				})
 			})

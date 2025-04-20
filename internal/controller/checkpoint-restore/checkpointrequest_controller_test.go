@@ -245,6 +245,7 @@ var _ = Describe("CheckpointRequest Controller", func() {
 					}),
 				})).To(Succeed())
 				Expect(checkpointList.Items).To(HaveLen(1))
+				Expect(checkpointList.Items[0].ObjectMeta.OwnerReferences[0].Name).To(Equal(requestName))
 			})
 		})
 

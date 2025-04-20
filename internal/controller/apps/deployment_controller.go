@@ -107,6 +107,11 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{Requeue: true}, err
 	}
 
+	if err := ctrl.SetControllerReference(&deployment, &checkpointSchedule, r.Scheme); err != nil {
+		log.Error(err, "failed to set controller reference for CheckpointSchedule")
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
 }
 
