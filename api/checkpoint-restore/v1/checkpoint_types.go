@@ -59,8 +59,8 @@ type CheckpointStatus struct {
 	// This field is populated by the checkpoint controller after creating the image
 	CheckpointImage string `json:"checkpointImage,omitempty"`
 
-	// Phase represents the current phase of the checkpoint (Created, ImageBuilt, Failed)
-	// +kubebuilder:validation:Enum=Created;ImageBuilt;Failed
+	// Phase represents the current phase of the checkpoint (Created, Processing, ImageBuilt, Failed)
+	// +kubebuilder:validation:Enum=Created;Processing;ImageBuilt;Failed
 	Phase string `json:"phase,omitempty"`
 
 	// Conditions represents the latest available observations of the checkpoint's current state

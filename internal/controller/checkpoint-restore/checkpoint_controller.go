@@ -62,6 +62,16 @@ func (r *CheckpointReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, nil
 	}
 
+	// Image is already processed, it should not be processed again.
+	if checkpoint.Status.Phase == "ImageBuilt" || checkpoint.Status.Phase == "Failed" {
+		return ctrl.Result{}, nil
+	}
+
+	// Image build process is in processing phase, we can reeschedule this reconcile loop to check the status.
+	if checkpoint.Status.Phase == "Processing" {
+		return ctrl.Result{Requeue: true}, nil
+	}
+
 	checkpointPath := checkpoint.Spec.CheckpointData
 	matches := checkpointEstimatePathRegex.FindStringSubmatch(checkpointPath)
 

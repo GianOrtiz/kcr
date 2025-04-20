@@ -22,7 +22,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/api/errors"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -33,84 +33,174 @@ import (
 
 var _ = Describe("Checkpoint Controller", func() {
 	Context("When reconciling a resource", func() {
-		const resourceName = "test-resource"
+		const checkpointName = "test-checkpoint"
 
-		ctx := context.Background()
-
-		typeNamespacedName := types.NamespacedName{
-			Name:      resourceName,
-			Namespace: "default",
-		}
-		checkpoint := &checkpointrestorev1.Checkpoint{}
+		var (
+			ctx                context.Context
+			namespace          string
+			typeNamespacedName types.NamespacedName
+			checkpoint         *checkpointrestorev1.Checkpoint
+		)
 
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind Checkpoint")
-			err := k8sClient.Get(ctx, typeNamespacedName, checkpoint)
-			if err != nil && errors.IsNotFound(err) {
-				now := metav1.Now()
-				resource := &checkpointrestorev1.Checkpoint{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: "default",
-					},
-					Status: checkpointrestorev1.CheckpointStatus{
-						CheckpointImage:    "image-reference",
-						Phase:              "Created",
-						LastTransitionTime: &now,
-					},
-					Spec: checkpointrestorev1.CheckpointSpec{
-						CheckpointData: "/var/lib/kubelet/checkpoints/checkpoint-kcr-example-5b9845566-rhnj2_default-kcr-example-1744851420.tar",
-					},
-				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+			ctx = context.Background()
+			namespace = "ns-" + randStringRunes(5)
+			typeNamespacedName = types.NamespacedName{
+				Name:      checkpointName,
+				Namespace: namespace,
 			}
+
+			Expect(k8sClient.Create(ctx, &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: namespace,
+				},
+			})).To(Succeed())
+
+			now := metav1.Now()
+			checkpoint = &checkpointrestorev1.Checkpoint{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      checkpointName,
+					Namespace: namespace,
+				},
+				Status: checkpointrestorev1.CheckpointStatus{
+					CheckpointImage:    "image-reference",
+					Phase:              "Created",
+					LastTransitionTime: &now,
+				},
+				Spec: checkpointrestorev1.CheckpointSpec{
+					CheckpointData: "/var/lib/kubelet/checkpoints/checkpoint-kcr-example-5b9845566-rhnj2_default-kcr-example-1744851420.tar",
+				},
+			}
+			Expect(k8sClient.Create(ctx, checkpoint)).To(Succeed())
 		})
 
 		AfterEach(func() {
-			resource := &checkpointrestorev1.Checkpoint{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Cleanup the specific resource instance Checkpoint")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+			k8sClient.Delete(ctx, &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: namespace,
+				},
+			})
 		})
 
-		It("should successfully reconcile the resource when the image builder succeeds", func() {
-			By("Reconciling the created resource")
-			imageBuilder := mockImageBuilder{mockedResult: nil}
-			controllerReconciler := &CheckpointReconciler{
-				Client:       k8sClient,
-				Scheme:       k8sClient.Scheme(),
-				ImageBuilder: &imageBuilder,
-			}
-
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
+		Describe("when the checkpoint phase is ImageBuilt", func() {
+			BeforeEach(func() {
+				checkpoint.Status.Phase = "ImageBuilt"
+				Expect(k8sClient.Status().Update(ctx, checkpoint)).To(Succeed())
 			})
-			Expect(err).NotTo(HaveOccurred())
 
-			var checkpoint checkpointrestorev1.Checkpoint
-			Expect(k8sClient.Get(ctx, typeNamespacedName, &checkpoint)).To(Succeed())
-			Expect(checkpoint.Status.Phase).To(Equal("ImageBuilt"))
+			It("should not change the phase and ignore the reconcile loop", func() {
+				imageBuilder := mockImageBuilder{mockedResult: nil}
+				controllerReconciler := &CheckpointReconciler{
+					Client:       k8sClient,
+					Scheme:       k8sClient.Scheme(),
+					ImageBuilder: &imageBuilder,
+				}
+
+				result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: typeNamespacedName,
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Requeue).To(BeFalse())
+			})
 		})
 
-		It("should fail to reconcile the resource when the image builder fails", func() {
-			By("Reconciling the created resource")
-			imageBuilder := mockImageBuilder{mockedResult: fmt.Errorf("mocked error")}
-			controllerReconciler := &CheckpointReconciler{
-				Client:       k8sClient,
-				Scheme:       k8sClient.Scheme(),
-				ImageBuilder: &imageBuilder,
-			}
-
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
+		Describe("when the checkpoint phase is Failed", func() {
+			BeforeEach(func() {
+				checkpoint.Status.Phase = "Failed"
+				Expect(k8sClient.Status().Update(ctx, checkpoint)).To(Succeed())
 			})
-			Expect(err).NotTo(HaveOccurred())
 
-			var checkpoint checkpointrestorev1.Checkpoint
-			Expect(k8sClient.Get(ctx, typeNamespacedName, &checkpoint)).To(Succeed())
-			Expect(checkpoint.Status.Phase).To(Equal("Failed"))
+			It("should not change the phase and ignore the reconcile loop", func() {
+				imageBuilder := mockImageBuilder{mockedResult: nil}
+				controllerReconciler := &CheckpointReconciler{
+					Client:       k8sClient,
+					Scheme:       k8sClient.Scheme(),
+					ImageBuilder: &imageBuilder,
+				}
+
+				result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: typeNamespacedName,
+				})
+
+				var updatedCheckpoint checkpointrestorev1.Checkpoint
+				Expect(k8sClient.Get(ctx, typeNamespacedName, &updatedCheckpoint)).To(Succeed())
+				Expect(updatedCheckpoint.Status.Phase).To(Equal("Failed"))
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Requeue).To(BeFalse())
+			})
+		})
+
+		Describe("when the checkpoint phase is Processing", func() {
+			BeforeEach(func() {
+				checkpoint.Status.Phase = "Processing"
+				Expect(k8sClient.Status().Update(ctx, checkpoint)).To(Succeed())
+			})
+
+			It("should not change the phase and requeue for later", func() {
+				imageBuilder := mockImageBuilder{mockedResult: nil}
+				controllerReconciler := &CheckpointReconciler{
+					Client:       k8sClient,
+					Scheme:       k8sClient.Scheme(),
+					ImageBuilder: &imageBuilder,
+				}
+
+				result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: typeNamespacedName,
+				})
+
+				var updatedCheckpoint checkpointrestorev1.Checkpoint
+				Expect(k8sClient.Get(ctx, typeNamespacedName, &updatedCheckpoint)).To(Succeed())
+				Expect(updatedCheckpoint.Status.Phase).To(Equal("Processing"))
+
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Requeue).To(BeTrue())
+			})
+		})
+
+		Describe("when the checkpoint phase is Created", func() {
+			BeforeEach(func() {
+				checkpoint.Status.Phase = "Created"
+				Expect(k8sClient.Status().Update(ctx, checkpoint)).To(Succeed())
+			})
+
+			It("should successfully reconcile the resource when the image builder succeeds", func() {
+				By("Reconciling the created resource")
+				imageBuilder := mockImageBuilder{mockedResult: nil}
+				controllerReconciler := &CheckpointReconciler{
+					Client:       k8sClient,
+					Scheme:       k8sClient.Scheme(),
+					ImageBuilder: &imageBuilder,
+				}
+
+				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: typeNamespacedName,
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				var checkpoint checkpointrestorev1.Checkpoint
+				Expect(k8sClient.Get(ctx, typeNamespacedName, &checkpoint)).To(Succeed())
+				Expect(checkpoint.Status.Phase).To(Equal("ImageBuilt"))
+			})
+
+			It("should fail to reconcile the resource when the image builder fails", func() {
+				By("Reconciling the created resource")
+				imageBuilder := mockImageBuilder{mockedResult: fmt.Errorf("mocked error")}
+				controllerReconciler := &CheckpointReconciler{
+					Client:       k8sClient,
+					Scheme:       k8sClient.Scheme(),
+					ImageBuilder: &imageBuilder,
+				}
+
+				_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+					NamespacedName: typeNamespacedName,
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				var checkpoint checkpointrestorev1.Checkpoint
+				Expect(k8sClient.Get(ctx, typeNamespacedName, &checkpoint)).To(Succeed())
+				Expect(checkpoint.Status.Phase).To(Equal("Failed"))
+			})
 		})
 	})
 })

@@ -231,9 +231,10 @@ spec:
                 type: string
               phase:
                 description: Phase represents the current phase of the checkpoint
-                  (Created, ImageBuilt, Failed)
+                  (Created, Processing, ImageBuilt, Failed)
                 enum:
                 - Created
+                - Processing
                 - ImageBuilt
                 - Failed
                 type: string
