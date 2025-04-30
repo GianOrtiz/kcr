@@ -9,27 +9,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-/*
-func main() {
-	if reexec.Init() {
-		return
-	}
-}
-*/
-
 type BuildahImageBuilder struct {
 	buildStore storage.Store
 }
 
 func NewBuildahImageBuilder() (ImageBuilder, error) {
-	/*
-		buildStorageOptions := storage.StoreOptions{
-			GraphRoot:           "/home/gian/.local/share/containers/storage",
-			GraphDriverName:     "overlay",
-			RootlessStoragePath: "/home/gian/.local/share/containers",
-			RunRoot:             "/home/gian/containers",
-		}
-	*/
 	buildStorageOptions, err := storage.DefaultStoreOptions()
 	if err != nil {
 		return nil, err
