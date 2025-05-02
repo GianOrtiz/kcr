@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package checkpointrestore
+package core
 
 import (
 	"context"
@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,9 +33,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	checkpointrestorev1 "github.com/GianOrtiz/kcr/api/checkpoint-restore/v1"
-	corev1 "k8s.io/api/core/v1"
 	// +kubebuilder:scaffold:imports
+	checkpointrestorev1 "github.com/GianOrtiz/kcr/api/checkpoint-restore/v1"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -54,24 +54,6 @@ func TestControllers(t *testing.T) {
 	RunSpecs(t, "Controller Suite")
 }
 
-// Mock implementation of CheckpointServiceInterface
-type mockCheckpointService struct {
-	mockedResult error
-}
-
-func (m *mockCheckpointService) Checkpoint(podNode, podID, podNamespace, containerName string) error {
-	return m.mockedResult
-}
-
-// Mock implementation of ImageBuilder.
-type mockImageBuilder struct {
-	mockedResult error
-}
-
-func (m *mockImageBuilder) BuildFromCheckpoint(checkpointLocation, imageName string, ctx context.Context) error {
-	return m.mockedResult
-}
-
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
@@ -89,7 +71,7 @@ var _ = BeforeSuite(func() {
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "config", "crd", "bases")},
-		ErrorIfCRDPathMissing: true,
+		ErrorIfCRDPathMissing: false,
 	}
 
 	// Retrieve the first found binary directory to allow running tests from IDEs

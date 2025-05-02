@@ -29,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	checkpointrestorev1 "github.com/GianOrtiz/kcr/api/checkpoint-restore/v1"
+	"github.com/GianOrtiz/kcr/pkg/util"
 )
 
 var _ = Describe("Checkpoint Controller", func() {
@@ -44,7 +45,7 @@ var _ = Describe("Checkpoint Controller", func() {
 
 		BeforeEach(func() {
 			ctx = context.Background()
-			namespace = "ns-" + randStringRunes(5)
+			namespace = "ns-" + util.RandStringRunes(5)
 			typeNamespacedName = types.NamespacedName{
 				Name:      checkpointName,
 				Namespace: namespace,
@@ -181,6 +182,7 @@ var _ = Describe("Checkpoint Controller", func() {
 				var checkpoint checkpointrestorev1.Checkpoint
 				Expect(k8sClient.Get(ctx, typeNamespacedName, &checkpoint)).To(Succeed())
 				Expect(checkpoint.Status.Phase).To(Equal("ImageBuilt"))
+				Expect(checkpoint.Status.CheckpointImage).To(Equal("kcr.io/checkpoint/" + checkpoint.Name))
 			})
 
 			It("should fail to reconcile the resource when the image builder fails", func() {

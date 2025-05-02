@@ -161,7 +161,8 @@ func (r *CheckpointReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
-	if err := r.ImageBuilder.BuildFromCheckpoint(checkpointClosestFile, "docker.io/gianortiz/checkpoint", ctx); err != nil {
+	checkpointImage := "kcr.io/checkpoint" + "/" + checkpoint.Name
+	if err := r.ImageBuilder.BuildFromCheckpoint(checkpointClosestFile, checkpointImage, ctx); err != nil {
 		log.Error(err, "unable to build image from checkpoint")
 		checkpoint.Status.Phase = "Failed"
 		checkpoint.Status.FailedReason = err.Error()
@@ -173,6 +174,7 @@ func (r *CheckpointReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	checkpoint.Status.Phase = "ImageBuilt"
+	checkpoint.Status.CheckpointImage = checkpointImage
 	if err := r.Status().Update(ctx, &checkpoint); err != nil {
 		log.Error(err, "unable to update checkpoint status")
 		return ctrl.Result{}, err

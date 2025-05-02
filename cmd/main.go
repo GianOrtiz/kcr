@@ -37,13 +37,15 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	"github.com/containers/buildah"
+	"github.com/containers/storage/pkg/unshare"
+
 	checkpointrestorev1 "github.com/GianOrtiz/kcr/api/checkpoint-restore/v1"
 	controller "github.com/GianOrtiz/kcr/internal/controller/apps"
 	checkpointrestorecontroller "github.com/GianOrtiz/kcr/internal/controller/checkpoint-restore"
+	corecontroller "github.com/GianOrtiz/kcr/internal/controller/core"
 	"github.com/GianOrtiz/kcr/pkg/checkpoint"
 	"github.com/GianOrtiz/kcr/pkg/imagebuilder"
-	"github.com/containers/buildah"
-	"github.com/containers/storage/pkg/unshare"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -254,6 +256,13 @@ func main() {
 		CheckpointService: checkpointService,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CheckpointRequest")
+		os.Exit(1)
+	}
+	if err = (&corecontroller.PodReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Pod")
 		os.Exit(1)
 	}
 	// +kubebuilder:scaffold:builder

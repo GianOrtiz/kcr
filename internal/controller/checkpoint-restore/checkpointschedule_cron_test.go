@@ -4,6 +4,7 @@ import (
 	"context"
 
 	checkpointrestorev1 "github.com/GianOrtiz/kcr/api/checkpoint-restore/v1"
+	"github.com/GianOrtiz/kcr/pkg/util"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -27,7 +28,7 @@ var _ = Describe("CheckpointSchedule CronJob", func() {
 
 		BeforeEach(func() {
 			ctx = context.Background()
-			namespace = "ns-" + randStringRunes(5)
+			namespace = "ns-" + util.RandStringRunes(5)
 			typeNamespacedName = types.NamespacedName{
 				Name:      resourceName,
 				Namespace: namespace,
