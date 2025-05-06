@@ -167,14 +167,32 @@ func IsCertManagerCRDsInstalled() bool {
 
 // LoadImageToKindClusterWithName loads a local docker image to the kind cluster
 func LoadImageToKindClusterWithName(name string) error {
-	cluster := "kind"
-	if v, ok := os.LookupEnv("KIND_CLUSTER"); ok {
-		cluster = v
+	saveImageCmd := exec.Command("docker", "save", name, "-o", "image.tar")
+	if _, err := Run(saveImageCmd); err != nil {
+		return err
 	}
-	kindOptions := []string{"load", "docker-image", name, "--name", cluster}
-	cmd := exec.Command("kind", kindOptions...)
-	_, err := Run(cmd)
-	return err
+
+	copyToControlPlaneCmd := exec.Command("docker", "cp", "image.tar", "kind-control-plane:/image.tar")
+	if _, err := Run(copyToControlPlaneCmd); err != nil {
+		return err
+	}
+
+	copyToWorkerCmd := exec.Command("docker", "cp", "image.tar", "kind-worker:/image.tar")
+	if _, err := Run(copyToWorkerCmd); err != nil {
+		return err
+	}
+
+	skopeoCopyControlPlaneCmd := exec.Command("docker", "exec", "kind-control-plane", "skopeo", "copy", "docker-archive:/image.tar", "containers-storage:"+name)
+	if _, err := Run(skopeoCopyControlPlaneCmd); err != nil {
+		return err
+	}
+
+	skopeoCopyWorkerCmd := exec.Command("docker", "exec", "kind-worker", "skopeo", "copy", "docker-archive:/image.tar", "containers-storage:"+name)
+	if _, err := Run(skopeoCopyWorkerCmd); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // GetNonEmptyLines converts given command output string into individual objects

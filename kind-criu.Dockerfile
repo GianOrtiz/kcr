@@ -47,6 +47,9 @@ RUN echo "Installing Packages ..." \
     && DEBIAN_FRONTEND=noninteractive apt-get --option=Dpkg::Options::=--force-confdef install -y cri-o \
     && sed -i 's/containerd/crio/g' /etc/crictl.yaml
 
+# Installing skopeo to load the image to the cluster.
+RUN apt-get install -y skopeo
+
 # Configure cri-o to use CRIU for checkpoint/restore.
 COPY crio.conf /etc/crio/crio.conf
 COPY crio.conf /etc/crio/crio.conf.d/11-crio.conf
