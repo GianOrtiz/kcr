@@ -19,7 +19,7 @@ COPY pkg/ pkg/
 
 # Install packages required for buildah.
 RUN apt update -y && apt upgrade -y
-RUN apt install btrfs-progs golang-github-containerd-btrfs-dev libgpgme-dev -y
+RUN apt install btrfs-progs golang-github-containerd-btrfs-dev libgpgme-dev passt -y
 
 # Build
 # the GOARCH has not a default value to allow the binary be built according to the host where the command
@@ -28,11 +28,23 @@ RUN apt install btrfs-progs golang-github-containerd-btrfs-dev libgpgme-dev -y
 # by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
 RUN CGO_ENABLED=1 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o manager cmd/main.go
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+# We are not using the distroless image as we still need to have C binaries in order for buildah to work.
+# Later we are going to split the buildah image into a separate image.
+FROM debian:bookworm
+
+# Install packages required for buildah.
+# These were specified as needed for buildah and were present in the builder stage.
+# If CGO_ENABLED=1 linked against .so files from these -dev packages, they are needed.
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends \
+    btrfs-progs \
+    libc6 \
+    passt \
+    golang-github-containerd-btrfs-dev \
+    libgpgme-dev && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /
 COPY --from=builder /workspace/manager .
-USER 65532:65532
 
 ENTRYPOINT ["/manager"]
