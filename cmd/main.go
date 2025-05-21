@@ -69,8 +69,7 @@ func main() {
 	unshare.MaybeReexecUsingUserNamespace(false)
 
 	var metricsAddr string
-	var masterNodeIP string
-	var masterNodePort int
+	var kubernetesAPIAddress string
 	var metricsCertPath, metricsCertName, metricsCertKey string
 	var webhookCertPath, webhookCertName, webhookCertKey string
 	var enableLeaderElection bool
@@ -80,8 +79,7 @@ func main() {
 	var tlsOpts []func(*tls.Config)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
-	flag.StringVar(&masterNodeIP, "master-node-ip", "172.20.0.2", "The address of the Kubernetes master node.")
-	flag.IntVar(&masterNodePort, "master-node-port", 6443, "The port of the Kubernetes master node.")
+	flag.StringVar(&kubernetesAPIAddress, "kubernetes-api-address", "https://kubernetes.default.svc", "The address of the Kubernetes API server")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
@@ -226,7 +224,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	checkpointService, err := checkpoint.New(masterNodeIP, masterNodePort)
+	checkpointService, err := checkpoint.New(kubernetesAPIAddress)
 	if err != nil {
 		setupLog.Error(err, "unable to create checkpoint service")
 		os.Exit(1)
