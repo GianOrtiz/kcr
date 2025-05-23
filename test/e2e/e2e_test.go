@@ -269,6 +269,24 @@ var _ = Describe("Manager", Ordered, func() {
 				outputLines := utils.GetNonEmptyLines(output)
 				return outputLines
 			}, 5*time.Minute).Should(HaveLen(1))
+
+			Eventually(func() []string {
+				findCheckpointStatusCmd := exec.Command("kubectl", "get", "checkpoint", "-o", "template", "--template='{{range .items}}{{.status.phase}}{{\"\\n\"}}{{end}}'")
+				output, err := utils.Run(findCheckpointStatusCmd)
+				if err != nil {
+					_, _ = fmt.Fprintf(GinkgoWriter, "failed to find checkpoint: %s", err)
+				}
+
+				outputLines := utils.GetNonEmptyLines(output)
+				imageBuiltCheckpoints := 0
+				for _, line := range outputLines {
+					if line == "ImageBuilt" {
+						imageBuiltCheckpoints++
+					}
+				}
+
+				return outputLines
+			}, 5*time.Minute).Should(HaveLen(1))
 		})
 	})
 })
