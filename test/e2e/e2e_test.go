@@ -252,14 +252,24 @@ var _ = Describe("Manager", Ordered, func() {
 
 		// +kubebuilder:scaffold:e2e-webhooks-checks
 
-		// TODO: Customize the e2e test suite with scenarios specific to your project.
-		// Consider applying sample/CR(s) and check their status and/or verifying
-		// the reconciliation by using the metrics, i.e.:
-		// metricsOutput := getMetricsOutput()
-		// Expect(metricsOutput).To(ContainSubstring(
-		//    fmt.Sprintf(`controller_runtime_reconcile_total{controller="%s",result="success"} 1`,
-		//    strings.ToLower(<Kind>),
-		// ))
+		It("should create a checkpoint from a deployment pod image", func() {
+			applyCmd := exec.Command("kubectl", "apply", "-f", "examples/deployment.yaml")
+			_, err := utils.Run(applyCmd)
+			if err != nil {
+				_, _ = fmt.Fprintf(GinkgoWriter, "failed to apply deployment: %s", err)
+			}
+
+			Eventually(func() []string {
+				findCheckpointCmd := exec.Command("kubectl", "get", "checkpoint")
+				output, err := utils.Run(findCheckpointCmd)
+				if err != nil {
+					_, _ = fmt.Fprintf(GinkgoWriter, "failed to find checkpoint: %s", err)
+				}
+
+				outputLines := utils.GetNonEmptyLines(output)
+				return outputLines
+			}, 5*time.Minute).Should(HaveLen(1))
+		})
 	})
 })
 
