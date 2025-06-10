@@ -161,9 +161,21 @@ func (r *CheckpointReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
-	checkpointImage := "kcr.io/checkpoint" + "/" + checkpoint.Name
-	if err := r.ImageBuilder.BuildFromCheckpoint(checkpointClosestFile, checkpointImage, ctx); err != nil {
+	checkpointImage := "checkpoint-" + checkpoint.Name
+	if err := r.ImageBuilder.BuildFromCheckpoint(checkpointClosestFile, checkpoint.Spec.ContainerName, checkpointImage, ctx); err != nil {
 		log.Error(err, "unable to build image from checkpoint")
+		checkpoint.Status.Phase = "Failed"
+		checkpoint.Status.FailedReason = err.Error()
+		if err := r.Status().Update(ctx, &checkpoint); err != nil {
+			log.Error(err, "unable to update checkpoint status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	runtimeImageName := "checkpoint-" + checkpoint.Name + ":latest"
+	if err := r.ImageBuilder.PushToNodeRuntime(ctx, checkpointImage, runtimeImageName); err != nil {
+		log.Error(err, "unable to push image from checkpoint")
 		checkpoint.Status.Phase = "Failed"
 		checkpoint.Status.FailedReason = err.Error()
 		if err := r.Status().Update(ctx, &checkpoint); err != nil {

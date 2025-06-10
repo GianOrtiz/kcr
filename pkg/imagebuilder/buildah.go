@@ -2,9 +2,14 @@ package imagebuilder
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"os/exec"
 
 	"github.com/containers/buildah"
 	is "github.com/containers/image/v5/storage"
+	"github.com/containers/image/v5/transports/alltransports"
+	"github.com/containers/image/v5/types"
 	"github.com/containers/storage"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -27,7 +32,7 @@ func NewBuildahImageBuilder() (ImageBuilder, error) {
 	}, nil
 }
 
-func (b BuildahImageBuilder) BuildFromCheckpoint(checkpointLocation string, imageName string, ctx context.Context) error {
+func (b BuildahImageBuilder) BuildFromCheckpoint(checkpointLocation, containerName, imageName string, ctx context.Context) error {
 	log := log.FromContext(ctx)
 
 	builderOptions := buildah.BuilderOptions{
@@ -40,10 +45,11 @@ func (b BuildahImageBuilder) BuildFromCheckpoint(checkpointLocation string, imag
 	}
 	log.Info("Successfully retrieved a builder")
 
-	err = builder.Add(checkpointLocation, true, buildah.AddAndCopyOptions{}, ".")
+	err = builder.Add("/", true, buildah.AddAndCopyOptions{}, checkpointLocation)
 	if err != nil {
 		return err
 	}
+	builder.SetAnnotation("io.kubernetes.cri-o.annotations.checkpoint.name", containerName)
 	log.Info("Successfully added the checkpoint file to the builder")
 
 	imageRef, err := is.Transport.ParseStoreReference(b.buildStore, imageName)
@@ -55,4 +61,72 @@ func (b BuildahImageBuilder) BuildFromCheckpoint(checkpointLocation string, imag
 	_, _, _, err = builder.Commit(ctx, imageRef, buildah.CommitOptions{})
 	log.Info("Successfully created the image")
 	return err
+}
+
+func (b BuildahImageBuilder) pushToKindNodeRuntime(ctx context.Context, localImageName string, runtimeImageName string) error {
+	logger := log.FromContext(ctx)
+
+	pushToOCIDirectoryCommand := exec.CommandContext(ctx, "buildah", "push", localImageName, "dir:/checkpoint-image")
+	_, err := pushToOCIDirectoryCommand.CombinedOutput()
+	if err != nil {
+		logger.Error(err, "Failed to push image to OCI directory")
+		return fmt.Errorf("failed to push image %s to OCI directory: %w", localImageName, err)
+	}
+
+	copyOCIDirectoryToDocker := exec.CommandContext(ctx, "docker", "cp", "checkpoint-image", "kind-worker:/checkpoint-image")
+	_, err = copyOCIDirectoryToDocker.CombinedOutput()
+	if err != nil {
+		logger.Error(err, "Failed to copy OCI directory to Docker daemon")
+		return fmt.Errorf("failed to copy OCI directory %s to Docker daemon: %w", localImageName, err)
+	}
+
+	copyOCIDirectoryToContainersStorage := exec.CommandContext(ctx, "skopeo", "copy", "dir:/checkpoint-image", "containers-storage:"+runtimeImageName)
+	_, err = copyOCIDirectoryToContainersStorage.CombinedOutput()
+	if err != nil {
+		logger.Error(err, "Failed to copy OCI directory to containers-storage")
+		return fmt.Errorf("failed to copy OCI directory %s to containers-storage: %w", localImageName, err)
+	}
+
+	return nil
+}
+
+func (b BuildahImageBuilder) PushToNodeRuntime(ctx context.Context, localImageName string, runtimeImageName string) error {
+	logger := log.FromContext(ctx)
+	// TODO: this will not work in a production environment. We must be able to push this to whatever
+	// repository we have setup. We must retrieve this information from the configuration.
+	destinationSpec := "docker://localhost:5000/" + runtimeImageName
+	imageReference, err := alltransports.ParseImageName(destinationSpec)
+	if err != nil {
+		logger.Error(err, "Failed to parse destination spec", "destination", destinationSpec)
+		return fmt.Errorf("failed to parse destination spec %s: %w", destinationSpec, err)
+	}
+
+	_, err = is.Transport.ParseStoreReference(b.buildStore, localImageName)
+	if err != nil {
+		logger.Error(err, "Local image not found in store, cannot push", "imageName", localImageName)
+		return fmt.Errorf("local image %s not found for push: %w", localImageName, err)
+	}
+
+	options := buildah.PushOptions{
+		Store:        b.buildStore,
+		ReportWriter: os.Stderr,
+		SystemContext: &types.SystemContext{
+			DockerInsecureSkipTLSVerify: types.OptionalBoolTrue,
+		},
+	}
+
+	_, _, err = buildah.Push(ctx, localImageName, imageReference, options)
+	if err != nil {
+		logger.Error(err, "Failed to push image to node runtime", "imageName", localImageName, "destination", destinationSpec)
+		return fmt.Errorf("failed to push image %s to %s: %w", localImageName, destinationSpec, err)
+	}
+
+	logger.Info("Successfully pushed image to local runtime", "imageName", localImageName, "destination", destinationSpec)
+
+	// TODO: run this only when we are executing the local environment.
+	if err := b.pushToKindNodeRuntime(ctx, localImageName, runtimeImageName); err != nil {
+		return err
+	}
+
+	return nil
 }

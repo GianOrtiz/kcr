@@ -46,6 +46,10 @@ type CheckpointSpec struct {
 	// that triggered this checkpoint creation
 	CheckpointScheduleRef *corev1.ObjectReference `json:"checkpointScheduleRef,omitempty"`
 
+	// ContainerName is the name of the container in the Pod so we can use it later while
+	// restoring.
+	ContainerName string `json:"containerName,omitempty"`
+
 	// NodeName is the name of the node where the checkpoint was created
 	// and where the checkpoint data is stored
 	NodeName string `json:"nodeName,omitempty"`

@@ -11,7 +11,7 @@ nodes:
         criSocket: unix:///var/run/crio/crio.sock
   - role: worker
     extraMounts:
-    - hostPath: /var/lib/kubelet/checkpoints
+    - hostPath: ./checkpoints
       containerPath: /var/lib/kubelet/checkpoints
     kubeadmConfigPatches:
     - |

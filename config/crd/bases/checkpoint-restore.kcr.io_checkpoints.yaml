@@ -97,6 +97,11 @@ spec:
                   created
                 format: date-time
                 type: string
+              containerName:
+                description: |-
+                  ContainerName is the name of the container in the Pod so we can use it later while
+                  restoring.
+                type: string
               nodeName:
                 description: |-
                   NodeName is the name of the node where the checkpoint was created

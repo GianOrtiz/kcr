@@ -68,7 +68,11 @@ type mockImageBuilder struct {
 	mockedResult error
 }
 
-func (m *mockImageBuilder) BuildFromCheckpoint(checkpointLocation, imageName string, ctx context.Context) error {
+func (m *mockImageBuilder) BuildFromCheckpoint(checkpointLocation, containerName, imageName string, ctx context.Context) error {
+	return m.mockedResult
+}
+
+func (m *mockImageBuilder) PushToNodeRuntime(ctx context.Context, localImageName string, runtimeImageName string) error {
 	return m.mockedResult
 }
 

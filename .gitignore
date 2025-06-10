@@ -32,3 +32,6 @@ docs
 
 # E2E tests
 image.tar
+
+# Checkpoints
+checkpoints

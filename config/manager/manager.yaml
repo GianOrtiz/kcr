@@ -64,6 +64,9 @@ spec:
         image: controller:latest
         name: manager
         ports: []
+        volumeMounts:
+        - name: container-storage
+          mountPath: /var/lib/containers
         securityContext:
           privileged: true
         livenessProbe:
@@ -88,6 +91,10 @@ spec:
             cpu: 10m
             memory: 64Mi
         volumeMounts: []
-      volumes: []
+      volumes:
+      - name: container-storage
+        hostPath:
+          path: /var/lib/containers
+          type: DirectoryOrCreate
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10

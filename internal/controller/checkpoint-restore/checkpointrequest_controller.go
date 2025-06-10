@@ -145,6 +145,7 @@ func (r *CheckpointRequestReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			CheckpointTimestamp: &metav1.Time{Time: time.Now()},
 			CheckpointID:        checkpointID,
 			NodeName:            pod.Spec.NodeName,
+			ContainerName:       containerName,
 		},
 		Status: checkpointrestorev1.CheckpointStatus{
 			Phase: "Created",

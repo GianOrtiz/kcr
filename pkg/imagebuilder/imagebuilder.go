@@ -5,5 +5,6 @@ import (
 )
 
 type ImageBuilder interface {
-	BuildFromCheckpoint(checkpointLocation string, imageName string, ctx context.Context) error
+	BuildFromCheckpoint(checkpointLocation, containerName, imageName string, ctx context.Context) error
+	PushToNodeRuntime(ctx context.Context, localImageName string, runtimeImageName string) error
 }
