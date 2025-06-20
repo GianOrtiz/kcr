@@ -66,24 +66,28 @@ func (b BuildahImageBuilder) BuildFromCheckpoint(checkpointLocation, containerNa
 func (b BuildahImageBuilder) pushToKindNodeRuntime(ctx context.Context, localImageName string, runtimeImageName string) error {
 	logger := log.FromContext(ctx)
 
-	pushToOCIDirectoryCommand := exec.CommandContext(ctx, "buildah", "push", localImageName, "dir:/checkpoint-image")
-	_, err := pushToOCIDirectoryCommand.CombinedOutput()
+	directory := "/checkpoint-image"
+	defer os.RemoveAll(directory)
+
+	OCIDirectory := "dir:" + directory
+	pushToOCIDirectoryCommand := exec.CommandContext(ctx, "buildah", "push", localImageName, OCIDirectory)
+	output, err := pushToOCIDirectoryCommand.CombinedOutput()
 	if err != nil {
-		logger.Error(err, "Failed to push image to OCI directory")
+		logger.Error(err, "Failed to push image to OCI directory", "output", output)
 		return fmt.Errorf("failed to push image %s to OCI directory: %w", localImageName, err)
 	}
 
-	copyOCIDirectoryToDocker := exec.CommandContext(ctx, "docker", "cp", "checkpoint-image", "kind-worker:/checkpoint-image")
-	_, err = copyOCIDirectoryToDocker.CombinedOutput()
+	copyOCIDirectoryToDocker := exec.CommandContext(ctx, "docker", "cp", directory, "kind-worker:/checkpoint-image")
+	output, err = copyOCIDirectoryToDocker.CombinedOutput()
 	if err != nil {
-		logger.Error(err, "Failed to copy OCI directory to Docker daemon")
+		logger.Error(err, "Failed to copy OCI directory to Docker daemon", "output", output)
 		return fmt.Errorf("failed to copy OCI directory %s to Docker daemon: %w", localImageName, err)
 	}
 
-	copyOCIDirectoryToContainersStorage := exec.CommandContext(ctx, "skopeo", "copy", "dir:/checkpoint-image", "containers-storage:"+runtimeImageName)
-	_, err = copyOCIDirectoryToContainersStorage.CombinedOutput()
+	copyOCIDirectoryToContainersStorage := exec.CommandContext(ctx, "docker", "exec", "kind-worker", "skopeo", "copy", OCIDirectory, "containers-storage:"+runtimeImageName)
+	output, err = copyOCIDirectoryToContainersStorage.CombinedOutput()
 	if err != nil {
-		logger.Error(err, "Failed to copy OCI directory to containers-storage")
+		logger.Error(err, "Failed to copy OCI directory to containers-storage", "output", output)
 		return fmt.Errorf("failed to copy OCI directory %s to containers-storage: %w", localImageName, err)
 	}
 

@@ -40,6 +40,7 @@ func (s *checkpointService) Checkpoint(podNode, podID, podNamespace, containerNa
 	if err != nil {
 		return err
 	}
+	// TODO: There is the checkpoint file in the response
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
