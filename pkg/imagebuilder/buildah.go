@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 
 	"github.com/containers/buildah"
 	is "github.com/containers/image/v5/storage"
@@ -39,6 +38,8 @@ func (b BuildahImageBuilder) BuildFromCheckpoint(checkpointLocation, containerNa
 		FromImage: "scratch",
 	}
 
+	buildahImageName := "localhost/" + imageName
+
 	builder, err := buildah.NewBuilder(ctx, b.buildStore, builderOptions)
 	if err != nil {
 		return err
@@ -52,53 +53,20 @@ func (b BuildahImageBuilder) BuildFromCheckpoint(checkpointLocation, containerNa
 	builder.SetAnnotation("io.kubernetes.cri-o.annotations.checkpoint.name", containerName)
 	log.Info("Successfully added the checkpoint file to the builder")
 
-	imageRef, err := is.Transport.ParseStoreReference(b.buildStore, imageName)
+	imageRef, err := is.Transport.ParseStoreReference(b.buildStore, buildahImageName)
 	if err != nil {
 		return err
 	}
-	log.Info("Successfully created the image reference")
 
 	_, _, _, err = builder.Commit(ctx, imageRef, buildah.CommitOptions{})
-	log.Info("Successfully created the image")
 	return err
-}
-
-func (b BuildahImageBuilder) pushToKindNodeRuntime(ctx context.Context, localImageName string, runtimeImageName string) error {
-	logger := log.FromContext(ctx)
-
-	directory := "/checkpoint-image"
-	defer os.RemoveAll(directory)
-
-	OCIDirectory := "dir:" + directory
-	pushToOCIDirectoryCommand := exec.CommandContext(ctx, "buildah", "push", localImageName, OCIDirectory)
-	output, err := pushToOCIDirectoryCommand.CombinedOutput()
-	if err != nil {
-		logger.Error(err, "Failed to push image to OCI directory", "output", output)
-		return fmt.Errorf("failed to push image %s to OCI directory: %w", localImageName, err)
-	}
-
-	copyOCIDirectoryToDocker := exec.CommandContext(ctx, "docker", "cp", directory, "kind-worker:/checkpoint-image")
-	output, err = copyOCIDirectoryToDocker.CombinedOutput()
-	if err != nil {
-		logger.Error(err, "Failed to copy OCI directory to Docker daemon", "output", output)
-		return fmt.Errorf("failed to copy OCI directory %s to Docker daemon: %w", localImageName, err)
-	}
-
-	copyOCIDirectoryToContainersStorage := exec.CommandContext(ctx, "docker", "exec", "kind-worker", "skopeo", "copy", OCIDirectory, "containers-storage:"+runtimeImageName)
-	output, err = copyOCIDirectoryToContainersStorage.CombinedOutput()
-	if err != nil {
-		logger.Error(err, "Failed to copy OCI directory to containers-storage", "output", output)
-		return fmt.Errorf("failed to copy OCI directory %s to containers-storage: %w", localImageName, err)
-	}
-
-	return nil
 }
 
 func (b BuildahImageBuilder) PushToNodeRuntime(ctx context.Context, localImageName string, runtimeImageName string) error {
 	logger := log.FromContext(ctx)
 	// TODO: this will not work in a production environment. We must be able to push this to whatever
 	// repository we have setup. We must retrieve this information from the configuration.
-	destinationSpec := "docker://localhost:5000/" + runtimeImageName
+	destinationSpec := "docker://localhost:5001/" + runtimeImageName
 	imageReference, err := alltransports.ParseImageName(destinationSpec)
 	if err != nil {
 		logger.Error(err, "Failed to parse destination spec", "destination", destinationSpec)
@@ -126,11 +94,6 @@ func (b BuildahImageBuilder) PushToNodeRuntime(ctx context.Context, localImageNa
 	}
 
 	logger.Info("Successfully pushed image to local runtime", "imageName", localImageName, "destination", destinationSpec)
-
-	// TODO: run this only when we are executing the local environment.
-	if err := b.pushToKindNodeRuntime(ctx, localImageName, runtimeImageName); err != nil {
-		return err
-	}
 
 	return nil
 }

@@ -70,6 +70,7 @@ func main() {
 
 	var metricsAddr string
 	var kubernetesAPIAddress string
+	var checkpointsDirectory string
 	var metricsCertPath, metricsCertName, metricsCertKey string
 	var webhookCertPath, webhookCertName, webhookCertKey string
 	var enableLeaderElection bool
@@ -80,6 +81,7 @@ func main() {
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
 	flag.StringVar(&kubernetesAPIAddress, "kubernetes-api-address", "https://kubernetes.default.svc", "The address of the Kubernetes API server")
+	flag.StringVar(&checkpointsDirectory, "checkpoints-directory", "/home/gian/prog/kcr/checkpoints", "The directory where checkpoints will be stored")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
@@ -241,9 +243,10 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&checkpointrestorecontroller.CheckpointReconciler{
-		Client:       mgr.GetClient(),
-		Scheme:       mgr.GetScheme(),
-		ImageBuilder: imageBuilder,
+		Client:               mgr.GetClient(),
+		Scheme:               mgr.GetScheme(),
+		ImageBuilder:         imageBuilder,
+		CheckpointsDirectory: checkpointsDirectory,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Checkpoint")
 		os.Exit(1)

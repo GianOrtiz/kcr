@@ -52,7 +52,8 @@ var _ = Describe("CheckpointRequest Controller", func() {
 
 		BeforeEach(func() {
 			checkpointService = &mockCheckpointService{
-				mockedResult: nil,
+				mockedResultError:  nil,
+				mockedResultString: "",
 			}
 
 			ctx = context.Background()
@@ -252,7 +253,7 @@ var _ = Describe("CheckpointRequest Controller", func() {
 
 		Describe("When the Checkpoint Service fails", func() {
 			BeforeEach(func() {
-				checkpointService.mockedResult = errors.New("mocked error")
+				checkpointService.mockedResultError = errors.New("mocked error")
 			})
 
 			It("should update the status to Failed", func() {

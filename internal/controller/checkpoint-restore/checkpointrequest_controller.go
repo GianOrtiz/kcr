@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"time"
 
+	"path/filepath"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -104,7 +106,7 @@ func (r *CheckpointRequestReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	nodeName := pod.Spec.NodeName
 	log.Info("checkpointing pod", "nodeName", nodeName, "pod", podName, "namespace", podNamespace, "container", containerName)
-	err := r.CheckpointService.Checkpoint(nodeName, podName, podNamespace, containerName)
+	checkpointFilePath, err := r.CheckpointService.Checkpoint(nodeName, podName, podNamespace, containerName)
 	if err != nil {
 		log.Error(err, "failed to checkpoint pod")
 
@@ -120,14 +122,10 @@ func (r *CheckpointRequestReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 	log.Info("checkpoint completed", "pod", podName)
 
+	checkpointFile := filepath.Base(checkpointFilePath)
 	// Create a Checkpoint resource
-	podFullName := podName + "_" + podNamespace
 	timestamp := time.Now().Unix()
 	checkpointID := fmt.Sprintf("%s-%d", podName+"-"+podNamespace, timestamp)
-
-	// Construct path to checkpoint tar file
-	checkpointFileName := fmt.Sprintf("checkpoint-%s-%s-%d.tar", podFullName, containerName, timestamp)
-	checkpointFilePath := fmt.Sprintf("/var/lib/kubelet/checkpoints/%s", checkpointFileName)
 
 	checkpoint := &checkpointrestorev1.Checkpoint{
 		ObjectMeta: metav1.ObjectMeta{
@@ -141,7 +139,7 @@ func (r *CheckpointRequestReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			},
 		},
 		Spec: checkpointrestorev1.CheckpointSpec{
-			CheckpointData:      checkpointFilePath,
+			CheckpointData:      checkpointFile,
 			CheckpointTimestamp: &metav1.Time{Time: time.Now()},
 			CheckpointID:        checkpointID,
 			NodeName:            pod.Spec.NodeName,

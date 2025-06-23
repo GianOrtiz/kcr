@@ -1,14 +1,14 @@
 package checkpoint
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
-	"log"
 	"net/http"
 )
 
 type CheckpointService interface {
-	Checkpoint(podNode, podID, podNamespace, containerName string) error
+	Checkpoint(podNode, podID, podNamespace, containerName string) (string, error)
 }
 
 // CheckpointService is a service to abstract checkpointing of a pod container..
@@ -26,7 +26,7 @@ func New(kubernetesAPIAddress string) (CheckpointService, error) {
 }
 
 // Checkpoint checkpoints a pod container.
-func (s *checkpointService) Checkpoint(podNode, podID, podNamespace, containerName string) error {
+func (s *checkpointService) Checkpoint(podNode, podID, podNamespace, containerName string) (string, error) {
 	address := fmt.Sprintf(
 		"%s/api/v1/nodes/%s/proxy/checkpoint/%s/%s/%s",
 		s.kubernetesAPIAddress,
@@ -38,19 +38,24 @@ func (s *checkpointService) Checkpoint(podNode, podID, podNamespace, containerNa
 
 	res, err := s.client.Post(address, "application/json", nil)
 	if err != nil {
-		return err
+		return "", err
 	}
-	// TODO: There is the checkpoint file in the response
 	defer res.Body.Close()
 
-	if res.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(res.Body)
-		if err != nil {
-			return fmt.Errorf("failed to read response body: %w", err)
-		}
-		log.Printf("res: %+v", string(body))
-		return fmt.Errorf("failed to checkpoint pod: %s", res.Status)
+	var body struct {
+		Items []string `json:"items"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		return "", fmt.Errorf("failed to decode response body: %w", err)
 	}
 
-	return nil
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("failed to checkpoint pod: %s", res.Status)
+	}
+
+	if len(body.Items) > 0 {
+		return body.Items[0], nil
+	}
+
+	return "", errors.New("no items in response")
 }

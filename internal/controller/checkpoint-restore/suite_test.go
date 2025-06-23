@@ -56,11 +56,12 @@ func TestControllers(t *testing.T) {
 
 // Mock implementation of CheckpointServiceInterface
 type mockCheckpointService struct {
-	mockedResult error
+	mockedResultError  error
+	mockedResultString string
 }
 
-func (m *mockCheckpointService) Checkpoint(podNode, podID, podNamespace, containerName string) error {
-	return m.mockedResult
+func (m *mockCheckpointService) Checkpoint(podNode, podID, podNamespace, containerName string) (string, error) {
+	return m.mockedResultString, m.mockedResultError
 }
 
 // Mock implementation of ImageBuilder.
