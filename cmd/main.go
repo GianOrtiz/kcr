@@ -71,6 +71,10 @@ func main() {
 	var metricsAddr string
 	var kubernetesAPIAddress string
 	var checkpointsDirectory string
+	var registryUrl string
+	var registryAuthFile string
+	var registryUsername string
+	var registryPassword string
 	var metricsCertPath, metricsCertName, metricsCertKey string
 	var webhookCertPath, webhookCertName, webhookCertKey string
 	var enableLeaderElection bool
@@ -81,7 +85,11 @@ func main() {
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
 	flag.StringVar(&kubernetesAPIAddress, "kubernetes-api-address", "https://kubernetes.default.svc", "The address of the Kubernetes API server")
-	flag.StringVar(&checkpointsDirectory, "checkpoints-directory", "/home/gian/prog/kcr/checkpoints", "The directory where checkpoints will be stored")
+	flag.StringVar(&checkpointsDirectory, "checkpoints-directory", "/var/lib/kubelet/checkpoints", "The directory where checkpoints will be stored")
+	flag.StringVar(&registryUrl, "registry-url", "localhost:5001", "Registry to use for pushing checkpoint images")
+	flag.StringVar(&registryAuthFile, "registry-auth-file", "", "Registry auth file to use for authentication")
+	flag.StringVar(&registryUsername, "registry-username", "", "Registry username to use for authentication requires registry-password")
+	flag.StringVar(&registryPassword, "registry-password", "", "Registry password to use for authentication requires registry-username")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
@@ -104,6 +112,11 @@ func main() {
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+
+	if (registryUsername != "" && registryPassword == "") || (registryUsername == "" && registryPassword != "") {
+		setupLog.Error(nil, "registry-username and registry-password must be provided together")
+		os.Exit(1)
+	}
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will
@@ -237,11 +250,24 @@ func main() {
 		os.Exit(1)
 	}
 
-	imageBuilder, err := imagebuilder.NewBuildahImageBuilder()
+	registryIsUsingBasicAuth := registryUsername != "" && registryPassword != ""
+	registryAuth := imagebuilder.RegistryAuth{
+		URL: registryUrl,
+	}
+	if registryIsUsingBasicAuth {
+		registryAuth.Basic = &imagebuilder.RegistryBasicAuth{
+			Username: registryUsername,
+			Password: registryPassword,
+		}
+	} else {
+		registryAuth.AuthFile = &registryAuthFile
+	}
+	imageBuilder, err := imagebuilder.NewBuildahImageBuilder(registryAuth)
 	if err != nil {
 		setupLog.Error(err, "unable to create image builder")
 		os.Exit(1)
 	}
+
 	if err = (&checkpointrestorecontroller.CheckpointReconciler{
 		Client:               mgr.GetClient(),
 		Scheme:               mgr.GetScheme(),

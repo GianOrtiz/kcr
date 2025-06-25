@@ -14,10 +14,11 @@ import (
 )
 
 type BuildahImageBuilder struct {
-	buildStore storage.Store
+	buildStore   storage.Store
+	registryAuth RegistryAuth
 }
 
-func NewBuildahImageBuilder() (ImageBuilder, error) {
+func NewBuildahImageBuilder(registryAuth RegistryAuth) (ImageBuilder, error) {
 	buildStorageOptions, err := storage.DefaultStoreOptions()
 	if err != nil {
 		return nil, err
@@ -27,7 +28,8 @@ func NewBuildahImageBuilder() (ImageBuilder, error) {
 		return nil, err
 	}
 	return BuildahImageBuilder{
-		buildStore: buildStore,
+		buildStore:   buildStore,
+		registryAuth: registryAuth,
 	}, nil
 }
 
@@ -44,7 +46,6 @@ func (b BuildahImageBuilder) BuildFromCheckpoint(checkpointLocation, containerNa
 	if err != nil {
 		return err
 	}
-	log.Info("Successfully retrieved a builder")
 
 	err = builder.Add("/", true, buildah.AddAndCopyOptions{}, checkpointLocation)
 	if err != nil {
@@ -64,9 +65,7 @@ func (b BuildahImageBuilder) BuildFromCheckpoint(checkpointLocation, containerNa
 
 func (b BuildahImageBuilder) PushToNodeRuntime(ctx context.Context, localImageName string, runtimeImageName string) error {
 	logger := log.FromContext(ctx)
-	// TODO: this will not work in a production environment. We must be able to push this to whatever
-	// repository we have setup. We must retrieve this information from the configuration.
-	destinationSpec := "docker://localhost:5001/" + runtimeImageName
+	destinationSpec := "docker://" + b.registryAuth.URL + "/" + runtimeImageName
 	imageReference, err := alltransports.ParseImageName(destinationSpec)
 	if err != nil {
 		logger.Error(err, "Failed to parse destination spec", "destination", destinationSpec)
@@ -79,12 +78,22 @@ func (b BuildahImageBuilder) PushToNodeRuntime(ctx context.Context, localImageNa
 		return fmt.Errorf("local image %s not found for push: %w", localImageName, err)
 	}
 
+	systemContext := types.SystemContext{
+		DockerInsecureSkipTLSVerify: types.OptionalBoolTrue,
+	}
+	if b.registryAuth.Basic != nil {
+		systemContext.DockerAuthConfig = &types.DockerAuthConfig{
+			Username: b.registryAuth.Basic.Username,
+			Password: b.registryAuth.Basic.Password,
+		}
+	} else if b.registryAuth.AuthFile != nil {
+		systemContext.AuthFilePath = *b.registryAuth.AuthFile
+	}
+
 	options := buildah.PushOptions{
-		Store:        b.buildStore,
-		ReportWriter: os.Stderr,
-		SystemContext: &types.SystemContext{
-			DockerInsecureSkipTLSVerify: types.OptionalBoolTrue,
-		},
+		Store:         b.buildStore,
+		ReportWriter:  os.Stderr,
+		SystemContext: &systemContext,
 	}
 
 	_, _, err = buildah.Push(ctx, localImageName, imageReference, options)
