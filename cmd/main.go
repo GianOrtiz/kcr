@@ -84,12 +84,32 @@ func main() {
 	var tlsOpts []func(*tls.Config)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
-	flag.StringVar(&kubernetesAPIAddress, "kubernetes-api-address", "https://kubernetes.default.svc", "The address of the Kubernetes API server")
-	flag.StringVar(&checkpointsDirectory, "checkpoints-directory", "/var/lib/kubelet/checkpoints", "The directory where checkpoints will be stored")
+	flag.StringVar(
+		&kubernetesAPIAddress,
+		"kubernetes-api-address",
+		"https://kubernetes.default.svc",
+		"The address of the Kubernetes API server",
+	)
+	flag.StringVar(
+		&checkpointsDirectory,
+		"checkpoints-directory",
+		"/var/lib/kubelet/checkpoints",
+		"The directory where checkpoints will be stored",
+	)
 	flag.StringVar(&registryUrl, "registry-url", "localhost:5001", "Registry to use for pushing checkpoint images")
 	flag.StringVar(&registryAuthFile, "registry-auth-file", "", "Registry auth file to use for authentication")
-	flag.StringVar(&registryUsername, "registry-username", "", "Registry username to use for authentication requires registry-password")
-	flag.StringVar(&registryPassword, "registry-password", "", "Registry password to use for authentication requires registry-username")
+	flag.StringVar(
+		&registryUsername,
+		"registry-username",
+		"",
+		"Registry username to use for authentication requires registry-password",
+	)
+	flag.StringVar(
+		&registryPassword,
+		"registry-password",
+		"",
+		"Registry password to use for authentication requires registry-username",
+	)
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
@@ -244,7 +264,8 @@ func main() {
 		setupLog.Error(err, "unable to create checkpoint service")
 		os.Exit(1)
 	}
-	checkpointScheduleReconciler := checkpointrestorecontroller.NewCheckpointScheduleReconciler(mgr.GetClient(), mgr.GetScheme())
+	checkpointScheduleReconciler := checkpointrestorecontroller.NewCheckpointScheduleReconciler(
+		mgr.GetClient(), mgr.GetScheme())
 	if err = checkpointScheduleReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CheckpointSchedule")
 		os.Exit(1)

@@ -182,12 +182,16 @@ func LoadImageToKindClusterWithName(name string) error {
 		return err
 	}
 
-	skopeoCopyControlPlaneCmd := exec.Command("docker", "exec", "kind-control-plane", "skopeo", "copy", "docker-archive:/image.tar", "containers-storage:"+name)
+	skopeoCopyControlPlaneCmd := exec.Command(
+		"docker", "exec", "kind-control-plane", "skopeo", "copy", "docker-archive:/image.tar", "containers-storage:"+name,
+	)
 	if _, err := Run(skopeoCopyControlPlaneCmd); err != nil {
 		return err
 	}
 
-	skopeoCopyWorkerCmd := exec.Command("docker", "exec", "kind-worker", "skopeo", "copy", "docker-archive:/image.tar", "containers-storage:"+name)
+	skopeoCopyWorkerCmd := exec.Command(
+		"docker", "exec", "kind-worker", "skopeo", "copy", "docker-archive:/image.tar", "containers-storage:"+name,
+	)
 	if _, err := Run(skopeoCopyWorkerCmd); err != nil {
 		return err
 	}

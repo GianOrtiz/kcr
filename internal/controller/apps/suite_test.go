@@ -95,7 +95,7 @@ var _ = BeforeSuite(func() {
 		Client: k8sManager.GetClient(),
 		Scheme: k8sManager.GetScheme(),
 	}
-	deploymentReconciler.SetupWithManager(k8sManager)
+	Expect(deploymentReconciler.SetupWithManager(k8sManager)).To(Succeed())
 	Expect(err).ToNot(HaveOccurred())
 
 	go func() {

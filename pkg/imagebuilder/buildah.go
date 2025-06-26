@@ -33,7 +33,9 @@ func NewBuildahImageBuilder(registryAuth RegistryAuth) (ImageBuilder, error) {
 	}, nil
 }
 
-func (b BuildahImageBuilder) BuildFromCheckpoint(checkpointLocation, containerName, imageName string, ctx context.Context) error {
+func (b BuildahImageBuilder) BuildFromCheckpoint(
+	checkpointLocation, containerName, imageName string, ctx context.Context,
+) error {
 	log := log.FromContext(ctx)
 
 	builderOptions := buildah.BuilderOptions{
@@ -63,7 +65,9 @@ func (b BuildahImageBuilder) BuildFromCheckpoint(checkpointLocation, containerNa
 	return err
 }
 
-func (b BuildahImageBuilder) PushToNodeRuntime(ctx context.Context, localImageName string, runtimeImageName string) error {
+func (b BuildahImageBuilder) PushToNodeRuntime(
+	ctx context.Context, localImageName string, runtimeImageName string,
+) error {
 	logger := log.FromContext(ctx)
 	destinationSpec := "docker://" + b.registryAuth.URL + "/" + runtimeImageName
 	imageReference, err := alltransports.ParseImageName(destinationSpec)

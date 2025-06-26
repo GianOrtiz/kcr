@@ -40,7 +40,11 @@ func (s *checkpointService) Checkpoint(podNode, podID, podNamespace, containerNa
 	if err != nil {
 		return "", err
 	}
-	defer res.Body.Close()
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			fmt.Printf("failed to close response body: %s", err.Error())
+		}
+	}()
 
 	var body struct {
 		Items []string `json:"items"`

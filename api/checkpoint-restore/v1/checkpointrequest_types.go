@@ -72,10 +72,10 @@ type CheckpointRequestStatus struct {
 	Message string `json:"message,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-//+kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
-//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // CheckpointRequest is the Schema for the checkpointrequests API
 type CheckpointRequest struct {
@@ -86,7 +86,7 @@ type CheckpointRequest struct {
 	Status CheckpointRequestStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // CheckpointRequestList contains a list of CheckpointRequest
 type CheckpointRequestList struct {

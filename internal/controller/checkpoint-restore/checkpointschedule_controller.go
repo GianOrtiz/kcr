@@ -75,9 +75,15 @@ func (r *CheckpointScheduleReconciler) Reconcile(ctx context.Context, req ctrl.R
 	cronJob := cron.New()
 	r.CronJobs[checkpointSchedule.Name] = cronJob
 
-	cronJob.AddFunc(schedule, func() {
-		r.CronJob(ctx, req)
-	})
+	if _, err := cronJob.AddFunc(schedule, func() {
+		if err := r.CronJob(ctx, req); err != nil {
+			log.Error(err, "failed to execute cronjob")
+			return
+		}
+	}); err != nil {
+		log.Error(err, "failed to add cron job")
+		return ctrl.Result{}, err
+	}
 
 	cronJob.Start()
 	return ctrl.Result{}, nil

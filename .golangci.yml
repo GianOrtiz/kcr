@@ -40,6 +40,12 @@ linters:
     - unconvert
     - unparam
     - unused
+  exclusions:
+    rules:
+      - linters:
+          lll
+          revive
+        text: "+kubebuilder"
 
 linters-settings:
   revive:

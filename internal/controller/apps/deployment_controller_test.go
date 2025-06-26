@@ -64,25 +64,27 @@ var _ = Describe("Deployment Controller", func() {
 						},
 					}
 					Expect(k8sClient.Create(ctx, deployment)).To(Succeed())
-					Eventually(func(g Gomega) {
+					Eventually(func(g Gomega) error {
 						var checkpointSchedule checkpointrestorev1.CheckpointSchedule
 						err := k8sClient.Get(ctx, client.ObjectKey{Namespace: deployment.Namespace, Name: deployment.Name}, &checkpointSchedule)
-						g.Expect(err).To(BeNil())
+						g.Expect(err).ToNot(HaveOccurred())
 						g.Expect(checkpointSchedule.Spec.Schedule).To(Equal(schedule))
 						g.Expect(checkpointSchedule.ObjectMeta.OwnerReferences[0].Name).To(Equal(deployment.Name))
-					}, 10, 1)
+						return nil
+					}, 10, 1).Should(Succeed())
 
 					By("by updating the deployment schedule should update the CheckpointSchedule schedule")
 					newSchedule := "0 3 * * *"
 					deployment.Annotations[CHECKPOINT_RESTORE_SCHEDULE_ANNOTATION] = newSchedule
 					Expect(k8sClient.Update(ctx, deployment)).To(Succeed())
-					Eventually(func(g Gomega) {
+					Eventually(func(g Gomega) error {
 						var checkpointSchedule checkpointrestorev1.CheckpointSchedule
 						err := k8sClient.Get(ctx, client.ObjectKey{Namespace: deployment.Namespace, Name: deployment.Name}, &checkpointSchedule)
-						g.Expect(err).To(BeNil())
+						g.Expect(err).ToNot(HaveOccurred())
 						g.Expect(checkpointSchedule.Spec.Schedule).To(Equal(newSchedule))
 						g.Expect(checkpointSchedule.ObjectMeta.OwnerReferences[0].Name).To(Equal(deployment.Name))
-					}, 10, 1)
+						return nil
+					}, 10, 1).Should(Succeed())
 				})
 			})
 		})

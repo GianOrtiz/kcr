@@ -51,6 +51,12 @@ type CheckpointRequestReconciler struct {
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *CheckpointRequestReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	const (
+		failedPhase     = "Failed"
+		completedPhase  = "Completed"
+		inProgressPhase = "InProgress"
+	)
+
 	log := log.FromContext(ctx)
 
 	// Fetch the CheckpointRequest
@@ -64,19 +70,21 @@ func (r *CheckpointRequestReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	// If it's already completed or failed, no need to process it again
-	if checkpointRequest.Status.Phase == "Completed" || checkpointRequest.Status.Phase == "Failed" {
+	inCompletedPhase := checkpointRequest.Status.Phase == completedPhase
+	inFailedPhase := checkpointRequest.Status.Phase == failedPhase
+	if inCompletedPhase || inFailedPhase {
 		return ctrl.Result{}, nil
 	}
 
 	// If it's not in Pending phase, and not Completed or Failed, it must be InProgress
 	// We'll just requeue it for later processing to avoid race conditions
-	if checkpointRequest.Status.Phase == "InProgress" {
+	if checkpointRequest.Status.Phase == inProgressPhase {
 		// Requeue after a short period
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
 	// Update the request to InProgress and set the start time
-	checkpointRequest.Status.Phase = "InProgress"
+	checkpointRequest.Status.Phase = inProgressPhase
 	checkpointRequest.Status.StartTime = &metav1.Time{Time: time.Now()}
 	if err := r.Status().Update(ctx, &checkpointRequest); err != nil {
 		log.Error(err, "failed to update CheckpointRequest status to InProgress")
@@ -94,7 +102,7 @@ func (r *CheckpointRequestReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		log.Error(err, "failed to get pod", "pod", podName, "namespace", podNamespace)
 
 		// Update the request to Failed
-		checkpointRequest.Status.Phase = "Failed"
+		checkpointRequest.Status.Phase = failedPhase
 		checkpointRequest.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 		checkpointRequest.Status.Message = fmt.Sprintf("Failed to get pod: %v", err)
 		if updateErr := r.Status().Update(ctx, &checkpointRequest); updateErr != nil {
@@ -111,7 +119,7 @@ func (r *CheckpointRequestReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		log.Error(err, "failed to checkpoint pod")
 
 		// Update the request to Failed
-		checkpointRequest.Status.Phase = "Failed"
+		checkpointRequest.Status.Phase = failedPhase
 		checkpointRequest.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 		checkpointRequest.Status.Message = fmt.Sprintf("Failed to checkpoint pod: %v", err)
 		if updateErr := r.Status().Update(ctx, &checkpointRequest); updateErr != nil {
@@ -175,7 +183,7 @@ func (r *CheckpointRequestReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		log.Error(err, "failed to set controller reference for Checkpoint")
 
 		// Update the request to Failed
-		checkpointRequest.Status.Phase = "Failed"
+		checkpointRequest.Status.Phase = failedPhase
 		checkpointRequest.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 		checkpointRequest.Status.Message = fmt.Sprintf("Failed to set controller reference: %v", err)
 		if updateErr := r.Status().Update(ctx, &checkpointRequest); updateErr != nil {
@@ -190,7 +198,7 @@ func (r *CheckpointRequestReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		log.Error(err, "failed to create Checkpoint resource")
 
 		// Update the request to Failed
-		checkpointRequest.Status.Phase = "Failed"
+		checkpointRequest.Status.Phase = failedPhase
 		checkpointRequest.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 		checkpointRequest.Status.Message = fmt.Sprintf("Failed to create Checkpoint resource: %v", err)
 		if updateErr := r.Status().Update(ctx, &checkpointRequest); updateErr != nil {
@@ -202,7 +210,7 @@ func (r *CheckpointRequestReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	log.Info("created checkpoint resource", "checkpoint", checkpoint.Name)
 
 	// Update the request to Completed
-	checkpointRequest.Status.Phase = "Completed"
+	checkpointRequest.Status.Phase = completedPhase
 	checkpointRequest.Status.CompletionTime = &metav1.Time{Time: time.Now()}
 	checkpointRequest.Status.Message = "Checkpoint created successfully"
 	checkpointRequest.Status.Checkpoint = &corev1.ObjectReference{

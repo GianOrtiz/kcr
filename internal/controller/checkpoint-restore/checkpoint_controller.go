@@ -44,6 +44,11 @@ type CheckpointReconciler struct {
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *CheckpointReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	const (
+		imageBuiltPhase = "ImageBuilt"
+		failedPhase     = "Failed"
+		processingPhase = "Processing"
+	)
 	log := log.FromContext(ctx)
 
 	var checkpoint checkpointrestorev1.Checkpoint
@@ -56,21 +61,23 @@ func (r *CheckpointReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// Image is already processed, it should not be processed again.
-	if checkpoint.Status.Phase == "ImageBuilt" || checkpoint.Status.Phase == "Failed" {
+	if checkpoint.Status.Phase == imageBuiltPhase || checkpoint.Status.Phase == failedPhase {
 		return ctrl.Result{}, nil
 	}
 
 	// Image build process is in processing phase, we can reeschedule this reconcile loop to check the status.
-	if checkpoint.Status.Phase == "Processing" {
+	if checkpoint.Status.Phase == processingPhase {
 		return ctrl.Result{Requeue: true}, nil
 	}
 
 	checkpointFile := checkpoint.Spec.CheckpointData
 	checkpointFilePath := filepath.Join(r.CheckpointsDirectory, checkpointFile)
 	checkpointImage := "checkpoint-" + checkpoint.Name
-	if err := r.ImageBuilder.BuildFromCheckpoint(checkpointFilePath, checkpoint.Spec.ContainerName, checkpointImage, ctx); err != nil {
+	if err := r.ImageBuilder.BuildFromCheckpoint(
+		checkpointFilePath, checkpoint.Spec.ContainerName, checkpointImage, ctx,
+	); err != nil {
 		log.Error(err, "unable to build image from checkpoint")
-		checkpoint.Status.Phase = "Failed"
+		checkpoint.Status.Phase = failedPhase
 		checkpoint.Status.FailedReason = err.Error()
 		if err := r.Status().Update(ctx, &checkpoint); err != nil {
 			log.Error(err, "unable to update checkpoint status")
@@ -82,7 +89,7 @@ func (r *CheckpointReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	runtimeImageName := "checkpoint-" + checkpoint.Name + ":latest"
 	if err := r.ImageBuilder.PushToNodeRuntime(ctx, checkpointImage, runtimeImageName); err != nil {
 		log.Error(err, "unable to push image from checkpoint")
-		checkpoint.Status.Phase = "Failed"
+		checkpoint.Status.Phase = failedPhase
 		checkpoint.Status.FailedReason = err.Error()
 		if err := r.Status().Update(ctx, &checkpoint); err != nil {
 			log.Error(err, "unable to update checkpoint status")
@@ -91,7 +98,7 @@ func (r *CheckpointReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, nil
 	}
 
-	checkpoint.Status.Phase = "ImageBuilt"
+	checkpoint.Status.Phase = imageBuiltPhase
 	checkpoint.Status.CheckpointImage = checkpointImage
 	if err := r.Status().Update(ctx, &checkpoint); err != nil {
 		log.Error(err, "unable to update checkpoint status")

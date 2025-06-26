@@ -32,6 +32,8 @@ import (
 	"github.com/GianOrtiz/kcr/pkg/util"
 )
 
+const checkpointData = "/var/lib/kubelet/checkpoints/checkpoint-kcr-example-5b9845566-rhnj2_default-kcr-example-1744851420.tar"
+
 var _ = Describe("Checkpoint Controller", func() {
 	Context("When reconciling a resource", func() {
 		const checkpointName = "test-checkpoint"
@@ -69,18 +71,18 @@ var _ = Describe("Checkpoint Controller", func() {
 					LastTransitionTime: &now,
 				},
 				Spec: checkpointrestorev1.CheckpointSpec{
-					CheckpointData: "/var/lib/kubelet/checkpoints/checkpoint-kcr-example-5b9845566-rhnj2_default-kcr-example-1744851420.tar",
+					CheckpointData: checkpointData,
 				},
 			}
 			Expect(k8sClient.Create(ctx, checkpoint)).To(Succeed())
 		})
 
 		AfterEach(func() {
-			k8sClient.Delete(ctx, &corev1.Namespace{
+			Expect(k8sClient.Delete(ctx, &corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: namespace,
 				},
-			})
+			})).To(Succeed())
 		})
 
 		Describe("when the checkpoint phase is ImageBuilt", func() {

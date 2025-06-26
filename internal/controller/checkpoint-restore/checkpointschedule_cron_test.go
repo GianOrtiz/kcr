@@ -33,19 +33,19 @@ var _ = Describe("CheckpointSchedule CronJob", func() {
 				Name:      resourceName,
 				Namespace: namespace,
 			}
-			k8sClient.Create(ctx, &corev1.Namespace{
+			Expect(k8sClient.Create(ctx, &corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: namespace,
 				},
-			})
+			})).To(Succeed())
 		})
 
 		AfterEach(func() {
-			k8sClient.Delete(ctx, &corev1.Namespace{
+			Expect(k8sClient.Delete(ctx, &corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: namespace,
 				},
-			})
+			})).To(Succeed())
 		})
 
 		Describe("when the schedule was deleted", func() {

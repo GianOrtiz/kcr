@@ -90,7 +90,7 @@ var _ = Describe("Pod Controller", func() {
 
 		Describe("When the Pod is not failed", func() {
 			BeforeEach(func() {
-				k8sClient.Status().Update(ctx, &corev1.Pod{
+				Expect(k8sClient.Status().Update(ctx, &corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      podName,
 						Namespace: namespace,
@@ -98,7 +98,7 @@ var _ = Describe("Pod Controller", func() {
 					Status: corev1.PodStatus{
 						Phase: corev1.PodPending,
 					},
-				})
+				})).To(Succeed())
 			})
 
 			It("should not restore the Pod", func() {
@@ -108,14 +108,14 @@ var _ = Describe("Pod Controller", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				var pod corev1.Pod
-				k8sClient.Get(ctx, namespacedName, &pod)
+				Expect(k8sClient.Get(ctx, namespacedName, &pod)).To(Succeed())
 				Expect(pod.Spec.Containers[0].Image).To(Equal(containerImage))
 			})
 		})
 
 		Describe("When the Pod is failed", func() {
 			BeforeEach(func() {
-				k8sClient.Status().Update(ctx, &corev1.Pod{
+				Expect(k8sClient.Status().Update(ctx, &corev1.Pod{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      podName,
 						Namespace: namespace,
@@ -123,7 +123,7 @@ var _ = Describe("Pod Controller", func() {
 					Status: corev1.PodStatus{
 						Phase: corev1.PodFailed,
 					},
-				})
+				})).To(Succeed())
 			})
 
 			Describe("When there is a latest checkpoint for the Pod", func() {
@@ -160,7 +160,7 @@ var _ = Describe("Pod Controller", func() {
 					Expect(err).NotTo(HaveOccurred())
 
 					var pod corev1.Pod
-					k8sClient.Get(ctx, namespacedName, &pod)
+					Expect(k8sClient.Get(ctx, namespacedName, &pod)).To(Succeed())
 					Expect(pod.Spec.Containers[0].Image).To(Equal("kcr.io/checkpoint/test-checkpoint"))
 				})
 			})

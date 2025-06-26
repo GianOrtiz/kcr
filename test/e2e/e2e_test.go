@@ -271,7 +271,14 @@ var _ = Describe("Manager", Ordered, func() {
 			}, 5*time.Minute).Should(HaveLen(1))
 
 			Eventually(func() []string {
-				findCheckpointStatusCmd := exec.Command("kubectl", "get", "checkpoint", "-o", "template", "--template='{{range .items}}{{.status.phase}}{{\"\\n\"}}{{end}}'")
+				findCheckpointStatusCmd := exec.Command(
+					"kubectl",
+					"get",
+					"checkpoint",
+					"-o",
+					"template",
+					"--template='{{range .items}}{{.status.phase}}{{\"\\n\"}}{{end}}'",
+				)
 				output, err := utils.Run(findCheckpointStatusCmd)
 				if err != nil {
 					_, _ = fmt.Fprintf(GinkgoWriter, "failed to find checkpoint: %s", err)
