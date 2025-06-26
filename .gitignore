@@ -28,7 +28,6 @@ go.work
 
 # AI experimentation
 .cursor
-docs
 
 # E2E tests
 image.tar

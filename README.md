@@ -1,21 +1,21 @@
 # kcr
-// TODO(user): Add simple overview of use/purpose
 
-Requires in cluster:
-
-1. CRIU
-2. btrfs
+KCR (Kubernetes Checkpoint Restore) is a Kubernetes Operator to automate the checkpoint and restore of stateful deployments. It allows users to define schedules to checkpoint stateful applications and later restore them when they fail.
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+
+Stateful applications depend on its memory content to provide its service. When a stateful application crashes the state is lost. Stateful application running on Kubernetes upon a fail and a restart cannot provide high availability due to the missing state upon a restart. Checkpoint is a techinique to "save" the state of the application so we can later use it to restore the application to the last saved state, checkpointing the application the application in time. The checkpoint can be used for later investigation of problems or to provide better availability for applications by having a hot copy when we need to restart the application. It can also be used in node migration to allow the application to be migrated without losing its state.
+
+KCR provides a way to save scheduled checkpoints of stateful applicatons and later use them to recover the application. It provides the functionality to checkpoint the stateful application and when the application fail restore it automatically. But we will provide a way to schedule checkpoints and restore over demand, so we can use them for other puporses like migrating nodes.
 
 ## Getting Started
 
 ### Prerequisites
+
 - go version v1.23.0+
 - docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
+- kubectl version v1.30.0+.
+- Access to a Kubernetes v1.30.0+ cluster with CRIU and btrfs.
 
 ### To Deploy on the cluster
 **Build and push your image to the location specified by `IMG`:**
@@ -116,7 +116,8 @@ previously added to 'dist/chart/values.yaml' or 'dist/chart/manager/manager.yaml
 is manually re-applied afterwards.
 
 ## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
+
+If you have anything to contribute to the project feel free to open an issue or merge request. I will not provide a good support to this project as I made it for fun.
 
 **NOTE:** Run `make help` for more information on all potential `make` targets
 
