@@ -17,6 +17,9 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Install btrfs package
+        run: apt-get update && apt-get install -y btrfs-progs 
+
       - name: Running Tests
         run: |
           go mod tidy

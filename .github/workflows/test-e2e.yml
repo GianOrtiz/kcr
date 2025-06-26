@@ -29,6 +29,9 @@ jobs:
       - name: Create kind cluster
         run: kind create cluster
 
+      - name: Install btrfs package
+        run: apt-get update && apt-get install -y btrfs-progs
+
       - name: Running Test e2e
         run: |
           go mod tidy
