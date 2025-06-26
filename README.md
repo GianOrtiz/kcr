@@ -117,7 +117,7 @@ is manually re-applied afterwards.
 
 ## Contributing
 
-If you have anything to contribute to the project feel free to open an issue or merge request. I will not provide a good support to this project as I made it for fun.
+If you have anything to contribute to the project feel free to open an issue or merge request. I will not provide a good support to this project as I made it for fun. There is a development guide [here](/docs/development.md).
 
 **NOTE:** Run `make help` for more information on all potential `make` targets
 
