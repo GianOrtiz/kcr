@@ -87,7 +87,7 @@ func main() {
 	flag.StringVar(
 		&kubernetesAPIAddress,
 		"kubernetes-api-address",
-		"https://kubernetes.default.svc",
+		"",
 		"The address of the Kubernetes API server",
 	)
 	flag.StringVar(
@@ -259,10 +259,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	checkpointService, err := checkpoint.New(kubernetesAPIAddress)
-	if err != nil {
-		setupLog.Error(err, "unable to create checkpoint service")
-		os.Exit(1)
+	isLocalEnvironment := kubernetesAPIAddress != ""
+	var checkpointService checkpoint.CheckpointService
+	if isLocalEnvironment {
+		checkpointService, err = checkpoint.NewLocalCheckpointService(kubernetesAPIAddress)
+		if err != nil {
+			setupLog.Error(err, "unable to create cluster checkpoint service")
+			os.Exit(1)
+		}
+	} else {
+		checkpointService, err = checkpoint.NewClusterCheckpointService()
+		if err != nil {
+			setupLog.Error(err, "unable to create local checkpoint service")
+			os.Exit(1)
+		}
 	}
 	checkpointScheduleReconciler := checkpointrestorecontroller.NewCheckpointScheduleReconciler(
 		mgr.GetClient(), mgr.GetScheme())

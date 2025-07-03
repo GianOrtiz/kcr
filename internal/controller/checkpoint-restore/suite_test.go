@@ -60,7 +60,7 @@ type mockCheckpointService struct {
 	mockedResultString string
 }
 
-func (m *mockCheckpointService) Checkpoint(podNode, podID, podNamespace, containerName string) (string, error) {
+func (m *mockCheckpointService) Checkpoint(podNode, podID, podNamespace, containerName string, ctx context.Context) (string, error) {
 	return m.mockedResultString, m.mockedResultError
 }
 

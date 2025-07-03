@@ -114,7 +114,7 @@ func (r *CheckpointRequestReconciler) Reconcile(ctx context.Context, req ctrl.Re
 
 	nodeName := pod.Spec.NodeName
 	log.Info("checkpointing pod", "nodeName", nodeName, "pod", podName, "namespace", podNamespace, "container", containerName)
-	checkpointFilePath, err := r.CheckpointService.Checkpoint(nodeName, podName, podNamespace, containerName)
+	checkpointFilePath, err := r.CheckpointService.Checkpoint(nodeName, podName, podNamespace, containerName, ctx)
 	if err != nil {
 		log.Error(err, "failed to checkpoint pod")
 
