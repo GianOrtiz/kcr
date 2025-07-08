@@ -1,0 +1,18 @@
+namespace: kcr-system
+
+namePrefix: kcr-
+
+resources:
+- ../../crd
+- ../../rbac
+- metrics_service.yaml
+- registry-config.yaml
+- ../../manager
+
+patches:
+- path: manager_metrics_patch.yaml
+  target:
+    kind: Deployment
+- path: manager_patch.yaml
+  target:
+    kind: Deployment

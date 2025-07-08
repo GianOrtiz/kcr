@@ -41,6 +41,9 @@ RUN apt-get update -y && \
     libc6 \
     passt \
     golang-github-containerd-btrfs-dev \
+    containernetworking-plugins \
+    netavark \
+    podman \
     libgpgme-dev && \
     rm -rf /var/lib/apt/lists/*
 
