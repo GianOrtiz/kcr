@@ -40,12 +40,11 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 var (
-	ctx                  context.Context
-	cancel               context.CancelFunc
-	testEnv              *envtest.Environment
-	cfg                  *rest.Config
-	k8sClient            client.Client
-	deploymentReconciler *DeploymentReconciler
+	ctx       context.Context
+	cancel    context.CancelFunc
+	testEnv   *envtest.Environment
+	cfg       *rest.Config
+	k8sClient client.Client
 )
 
 func TestControllers(t *testing.T) {

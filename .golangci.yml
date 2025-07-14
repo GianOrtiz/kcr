@@ -43,9 +43,9 @@ linters:
   exclusions:
     rules:
       - linters:
-          lll
-          revive
-        text: "+kubebuilder"
+        - lll
+        - revive
+        text: "$+kubebuilder"
 
 linters-settings:
   revive:
