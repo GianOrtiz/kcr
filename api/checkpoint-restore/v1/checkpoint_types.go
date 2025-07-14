@@ -63,6 +63,9 @@ type CheckpointStatus struct {
 	// This field is populated by the checkpoint controller after creating the image
 	CheckpointImage string `json:"checkpointImage,omitempty"`
 
+	// RuntimeImage is the reference to the image that was uploaded to the runtime image registry.
+	RuntimeImage string `json:"runtimeImage,omitempty"`
+
 	// Phase represents the current phase of the checkpoint (Created, Processing, ImageBuilt, Failed)
 	// +kubebuilder:validation:Enum=Created;Processing;ImageBuilt;Failed
 	Phase string `json:"phase,omitempty"`

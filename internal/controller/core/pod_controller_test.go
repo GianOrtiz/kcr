@@ -31,12 +31,13 @@ import (
 
 var _ = Describe("Pod Controller", func() {
 	const (
-		requestName    = "test-request"
-		podName        = "test-pod"
-		containerName  = "test-container"
-		containerImage = "test-image"
-		selectorKey    = "app"
-		selectorValue  = "kcr-test"
+		requestName     = "test-request"
+		podName         = "test-pod"
+		containerName   = "test-container"
+		containerImage  = "test-image"
+		selectorKey     = "app"
+		selectorValue   = "kcr-test"
+		registryAuthUrl = "docker"
 	)
 
 	Context("When reconciling a resource", func() {
@@ -84,7 +85,8 @@ var _ = Describe("Pod Controller", func() {
 
 			// Create our test controller
 			podController = &PodReconciler{
-				Client: k8sClient,
+				Client:          k8sClient,
+				RegistryAuthURL: registryAuthUrl,
 			}
 		})
 
@@ -122,6 +124,16 @@ var _ = Describe("Pod Controller", func() {
 					},
 					Status: corev1.PodStatus{
 						Phase: corev1.PodFailed,
+						ContainerStatuses: []corev1.ContainerStatus{
+							{
+								Name: containerName,
+								State: corev1.ContainerState{
+									Terminated: &corev1.ContainerStateTerminated{
+										Reason: "Error",
+									},
+								},
+							},
+						},
 					},
 				})).To(Succeed())
 			})
@@ -161,7 +173,7 @@ var _ = Describe("Pod Controller", func() {
 
 					var pod corev1.Pod
 					Expect(k8sClient.Get(ctx, namespacedName, &pod)).To(Succeed())
-					Expect(pod.Spec.Containers[0].Image).To(Equal("kcr.io/checkpoint/test-checkpoint"))
+					Expect(pod.Spec.Containers[0].Image).To(Equal(registryAuthUrl + "/kcr.io/checkpoint/test-checkpoint"))
 				})
 			})
 		})

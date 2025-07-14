@@ -30,7 +30,8 @@ import (
 // PodReconciler reconciles a Pod object
 type PodReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme          *runtime.Scheme
+	RegistryAuthURL string
 }
 
 // +kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch;create;update;patch;delete
@@ -48,7 +49,15 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if pod.Status.Phase != corev1.PodFailed {
+	isCrashing := false
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		if containerStatus.State.Terminated != nil && (containerStatus.State.Terminated.Reason == "Error") {
+			isCrashing = true
+			break
+		}
+	}
+
+	if !isCrashing {
 		log.Info("Pod has not failed, ignoring")
 		return ctrl.Result{}, nil
 	}
@@ -60,23 +69,29 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	var oldestCheckpoint *checkpointrestorev1.Checkpoint
+	if len(checkpoints.Items) == 0 {
+		log.Info("No Checkpoints found")
+		return ctrl.Result{}, nil
+	}
+
+	var newestCheckpoint *checkpointrestorev1.Checkpoint
 	for _, checkpoint := range checkpoints.Items {
-		if oldestCheckpoint == nil {
-			oldestCheckpoint = &checkpoint
+		if newestCheckpoint == nil {
+			newestCheckpoint = &checkpoint
 		} else {
-			if oldestCheckpoint.ObjectMeta.CreationTimestamp.Before(&checkpoint.ObjectMeta.CreationTimestamp) {
-				oldestCheckpoint = &checkpoint
+			if newestCheckpoint.ObjectMeta.CreationTimestamp.Before(&checkpoint.ObjectMeta.CreationTimestamp) {
+				newestCheckpoint = &checkpoint
 			}
 		}
 	}
 
-	pod.Spec.Containers[0].Image = oldestCheckpoint.Status.CheckpointImage
+	pod.Spec.Containers[0].Image = r.RegistryAuthURL + "/" + newestCheckpoint.Status.CheckpointImage
 	if err := r.Update(ctx, &pod); err != nil {
 		log.Error(err, "unable to update Pod")
 		return ctrl.Result{}, err
 	}
 
+	log.Info("Successfully updated pod with checkpoint image", "pod", pod.Name, "image", newestCheckpoint.Status.CheckpointImage)
 	return ctrl.Result{}, nil
 }
 

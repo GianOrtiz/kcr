@@ -100,6 +100,7 @@ func (r *CheckpointReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	checkpoint.Status.Phase = imageBuiltPhase
 	checkpoint.Status.CheckpointImage = checkpointImage
+	checkpoint.Status.RuntimeImage = runtimeImageName
 	if err := r.Status().Update(ctx, &checkpoint); err != nil {
 		log.Error(err, "unable to update checkpoint status")
 		return ctrl.Result{}, err

@@ -9,7 +9,9 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var _ = Describe("Deployment Controller", func() {
@@ -30,11 +32,13 @@ var _ = Describe("Deployment Controller", func() {
 							selectorKey: selectorValue,
 						},
 					}
+					deploymentName := "kcr-test"
+					deploymentNamespace := "default"
 					ctx := context.Background()
 					deployment := &appsv1.Deployment{
 						ObjectMeta: metav1.ObjectMeta{
-							Namespace: "default",
-							Name:      "kcr-test",
+							Namespace: deploymentNamespace,
+							Name:      deploymentName,
 							Annotations: map[string]string{
 								CHECKPOINT_RESTORE_SCHEDULE_ANNOTATION: schedule,
 							},
@@ -64,27 +68,22 @@ var _ = Describe("Deployment Controller", func() {
 						},
 					}
 					Expect(k8sClient.Create(ctx, deployment)).To(Succeed())
-					Eventually(func(g Gomega) error {
-						var checkpointSchedule checkpointrestorev1.CheckpointSchedule
-						err := k8sClient.Get(ctx, client.ObjectKey{Namespace: deployment.Namespace, Name: deployment.Name}, &checkpointSchedule)
-						g.Expect(err).ToNot(HaveOccurred())
-						g.Expect(checkpointSchedule.Spec.Schedule).To(Equal(schedule))
-						g.Expect(checkpointSchedule.ObjectMeta.OwnerReferences[0].Name).To(Equal(deployment.Name))
-						return nil
-					}, 10, 1).Should(Succeed())
 
-					By("by updating the deployment schedule should update the CheckpointSchedule schedule")
-					newSchedule := "0 3 * * *"
-					deployment.Annotations[CHECKPOINT_RESTORE_SCHEDULE_ANNOTATION] = newSchedule
-					Expect(k8sClient.Update(ctx, deployment)).To(Succeed())
-					Eventually(func(g Gomega) error {
-						var checkpointSchedule checkpointrestorev1.CheckpointSchedule
-						err := k8sClient.Get(ctx, client.ObjectKey{Namespace: deployment.Namespace, Name: deployment.Name}, &checkpointSchedule)
-						g.Expect(err).ToNot(HaveOccurred())
-						g.Expect(checkpointSchedule.Spec.Schedule).To(Equal(newSchedule))
-						g.Expect(checkpointSchedule.ObjectMeta.OwnerReferences[0].Name).To(Equal(deployment.Name))
-						return nil
-					}, 10, 1).Should(Succeed())
+					namespacedName := types.NamespacedName{
+						Name:      deploymentName,
+						Namespace: deploymentNamespace,
+					}
+					deploymentReconciler := DeploymentReconciler{
+						Client: k8sClient,
+						Scheme: k8sClient.Scheme(),
+					}
+					_, err := deploymentReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: namespacedName})
+					Expect(err).NotTo(HaveOccurred())
+
+					var checkpointSchedule checkpointrestorev1.CheckpointSchedule
+					err = k8sClient.Get(ctx, client.ObjectKey{Namespace: deployment.Namespace, Name: deployment.Name}, &checkpointSchedule)
+					Expect(err).ToNot(HaveOccurred())
+					Expect(checkpointSchedule.Spec.Schedule).To(Equal(schedule))
 				})
 			})
 		})

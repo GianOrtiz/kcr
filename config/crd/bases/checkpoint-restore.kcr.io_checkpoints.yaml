@@ -243,6 +243,10 @@ spec:
                 - ImageBuilt
                 - Failed
                 type: string
+              runtimeImage:
+                description: RuntimeImage is the reference to the image that was uploaded
+                  to the runtime image registry.
+                type: string
             type: object
         type: object
     served: true

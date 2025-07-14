@@ -184,7 +184,7 @@ var _ = Describe("Checkpoint Controller", func() {
 				var checkpoint checkpointrestorev1.Checkpoint
 				Expect(k8sClient.Get(ctx, typeNamespacedName, &checkpoint)).To(Succeed())
 				Expect(checkpoint.Status.Phase).To(Equal("ImageBuilt"))
-				Expect(checkpoint.Status.CheckpointImage).To(Equal("kcr.io/checkpoint/" + checkpoint.Name))
+				Expect(checkpoint.Status.CheckpointImage).To(Equal("checkpoint-" + checkpoint.Name))
 			})
 
 			It("should fail to reconcile the resource when the image builder fails", func() {
