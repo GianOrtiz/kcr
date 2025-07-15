@@ -18,7 +18,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Install btrfs package
-        run: sudo apt-get update && sudo apt-get install -y libgpgme-dev btrfs-progs 
+        run: sudo apt-get update && sudo apt-get install -y libgpgme-dev btrfs-progs golang-github-containerd-btrfs-dev
 
       - name: Running Tests
         run: |
