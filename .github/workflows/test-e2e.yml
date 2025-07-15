@@ -27,7 +27,7 @@ jobs:
         run: kind version
 
       - name: Build custom kind image
-        run: ./scripts/build-node-image.sh
+        run:  K8S_VERSION=v1.30.0 CRIO_VERSION=v1.30 ./scripts/build-node-image.sh
 
       - name: Create kind cluster
         run: ./scripts/create-kind-cluster.sh
