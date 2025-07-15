@@ -21,7 +21,8 @@ func NewLocalCheckpointService(kubernetesAPIAddress string) (CheckpointService, 
 	}, nil
 }
 
-func (s *localCheckpointService) Checkpoint(podNode, podID, podNamespace, containerName string, ctx context.Context) (string, error) {
+func (s *localCheckpointService) Checkpoint(podNode, podID, podNamespace, containerName string, ctx context.Context) (
+	string, error) {
 	address := fmt.Sprintf(
 		"%s/api/v1/nodes/%s/proxy/checkpoint/%s/%s/%s",
 		s.kubernetesAPIAddress,

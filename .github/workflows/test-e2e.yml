@@ -26,11 +26,14 @@ jobs:
       - name: Verify kind installation
         run: kind version
 
+      - name: Build custom kind image
+        run:  K8S_VERSION=v1.30.0 CRIO_VERSION=v1.30 ./scripts/build-node-image.sh
+
       - name: Create kind cluster
-        run: kind create cluster
+        run: ./scripts/create-kind-cluster.sh
 
       - name: Install btrfs package
-        run: apt-get update && apt-get install -y btrfs-progs
+        run: sudo apt-get update && sudo apt-get install -y btrfs-progs
 
       - name: Running Test e2e
         run: |

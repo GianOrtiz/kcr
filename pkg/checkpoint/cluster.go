@@ -32,7 +32,8 @@ func NewClusterCheckpointService() (CheckpointService, error) {
 	}, nil
 }
 
-func (s *clusterCheckpointService) Checkpoint(podNode, podID, podNamespace, containerName string, ctx context.Context) (string, error) {
+func (s *clusterCheckpointService) Checkpoint(podNode, podID, podNamespace, containerName string, ctx context.Context) (
+	string, error) {
 	paths := []string{
 		"api",
 		"v1",
