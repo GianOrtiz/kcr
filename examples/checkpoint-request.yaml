@@ -1,0 +1,39 @@
+apiVersion: checkpoint-restore.kcr.io/v1
+kind: CheckpointRequest
+metadata:
+  labels:
+    app: checkpoint-restore
+    pod: kcr-example-665b8dd976-k4j6x
+    pod-ns: default
+    schedule-name: kcr-example
+  name: kcr-example-kcr-example-665b8dd976-k4j6x-1753869240
+  namespace: default
+  ownerReferences:
+  - apiVersion: checkpoint-restore.kcr.io/v1
+    blockOwnerDeletion: true
+    controller: true
+    kind: CheckpointSchedule
+    name: kcr-example
+    uid: ef063c6c-1e98-45a9-a074-1e2eb4e417b4
+spec:
+  checkpointScheduleRef:
+    apiVersion: checkpoint-restore.kcr.io/v1
+    kind: CheckpointSchedule
+    name: kcr-example
+    namespace: default
+    uid: ef063c6c-1e98-45a9-a074-1e2eb4e417b4
+  containerName: kcr-example
+  podReference:
+    name: kcr-example-665b8dd976-k4j6x
+    namespace: default
+  timeoutSeconds: 300
+status:
+  checkpoint:
+    kind: Checkpoint
+    name: kcr-example-665b8dd976-k4j6x-default-1753869240
+    namespace: default
+    uid: 99474ca8-11e7-4b20-b189-4082acdc2780
+  completionTime: "2025-07-30T09:54:00Z"
+  message: Checkpoint created successfully
+  phase: Completed
+  startTime: "2025-07-30T09:54:00Z"

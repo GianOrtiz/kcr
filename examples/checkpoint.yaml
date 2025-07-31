@@ -1,0 +1,37 @@
+apiVersion: checkpoint-restore.kcr.io/v1
+kind: Checkpoint
+metadata:
+  labels:
+    checkpoint-request-name: kcr-example-kcr-example-665b8dd976-k4j6x-1753869240
+    container: kcr-example
+    pod: kcr-example-665b8dd976-k4j6x
+    pod-ns: default
+  name: kcr-example-665b8dd976-k4j6x-default-1753869240
+  namespace: default
+  ownerReferences:
+  - apiVersion: checkpoint-restore.kcr.io/v1
+    blockOwnerDeletion: true
+    controller: true
+    kind: CheckpointRequest
+    name: kcr-example-kcr-example-665b8dd976-k4j6x-1753869240
+    uid: 3f0435f2-5063-4139-a360-535e31f05dbf
+spec:
+  checkpointData: checkpoint-kcr-example-665b8dd976-k4j6x_default-kcr-example-2025-07-30T09:54:00Z.tar
+  checkpointID: kcr-example-665b8dd976-k4j6x-default-1753869240
+  checkpointScheduleRef:
+    apiVersion: checkpoint-restore.kcr.io/v1
+    kind: CheckpointSchedule
+    name: kcr-example
+    namespace: default
+    uid: ef063c6c-1e98-45a9-a074-1e2eb4e417b4
+  checkpointTimestamp: "2025-07-30T09:54:00Z"
+  containerName: kcr-example
+  nodeName: kind-worker
+  schedule: '*/1 * * * *'
+  selector:
+    matchLabels:
+      app: kcr-example
+status:
+  checkpointImage: checkpoint-kcr-example-665b8dd976-k4j6x-default-1753869240
+  phase: ImageBuilt
+  runtimeImage: checkpoint-kcr-example-665b8dd976-k4j6x-default-1753869240:latest
